@@ -1,0 +1,12 @@
+# 前端依赖
+frontpoint/node_modules/
+frontpoint/dist/
+
+# 后端依赖与缓存
+backend/.venv/
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# 忽略环境变量配置（绝密！）
+backend/.env
