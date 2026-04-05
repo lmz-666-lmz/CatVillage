@@ -7,24 +7,19 @@ import axios, {
 } from 'axios';
 import type { ApiResponse } from '@/types/common';
 
-// 创建axios实例
 const client = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1', // 默认API基础URL
-  timeout: 10000, // 请求超时时间
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  timeout: 10000,
 });
 
 // 请求拦截器
 client.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // 从localStorage获取token
     const token = localStorage.getItem('token');
     if (token) {
-      // 在请求头中添加Authorization
       if (!config.headers) {
         config.headers = new AxiosHeaders();
       }
-
-      // 使用 set 方法设置header
       if (typeof config.headers.set === 'function') {
         config.headers.set('Authorization', `Bearer ${token}`);
       } else {
@@ -34,7 +29,6 @@ client.interceptors.request.use(
     return config;
   },
   (error: AxiosError) => {
-    // 请求错误处理
     console.error('Request Error:', error);
     return Promise.reject(error);
   }
@@ -44,50 +38,34 @@ client.interceptors.request.use(
 client.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
-    // 响应错误处理
     console.error('Response Error:', error);
-    
-    // 根据HTTP状态码进行错误处理
     if (error.response && error.response.status) {
-      switch (error.response.status) {
-        case 400:
-          console.error('Request Parameter Error');
-          break;
-        case 401:
-          console.error('Unauthorized, please login again');
-          // 清除token并跳转到登录页
-          localStorage.removeItem('token');
-          break;
-        case 403:
-          console.error('Access Forbidden');
-          break;
-        case 404:
-          console.error('Resource Not Found');
-          break;
-        case 500:
-          console.error('Server Internal Error');
-          break;
-        default:
-          console.error(`Connection Error: ${error.response.status}`);
+      if (error.response.status === 401) {
+        console.error('Unauthorized, please login again');
+        localStorage.removeItem('token');
       }
     }
-    
     return Promise.reject(error);
   }
 );
 
-const request = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T>> => {
-  const response = await client.request<ApiResponse<T>>(config);
-  const res = response.data;
+// 核心请求函数：已修正兼容性逻辑
+const request = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T> | any> => {
+  const response = await client.request(config);
+  const res = response.data as any;
 
+  // 💥 兼容处理：如果是 OAuth2 登录返回的 Token 格式，直接返回数据
+  if (res.access_token) {
+    return res;
+  }
+
+  // 标准业务接口校验
   if (res.code !== 200) {
     if (res.code === 401) {
       console.error('Unauthorized, redirecting to login...');
       localStorage.removeItem('token');
-    } else {
-      console.error('API Error:', res.msg || 'Unknown Error');
     }
-    return Promise.reject(new Error(res.msg || 'Error'));
+    return Promise.reject(new Error(res.msg || 'API Error'));
   }
 
   return res;

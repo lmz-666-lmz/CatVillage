@@ -84,34 +84,26 @@ const routes: RouteRecordRaw[] = [
   }
 ];
 
-// 创建路由器实例
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes
 });
 
-// 路由守卫
-router.beforeEach((to, from, next) => {
+// 路由守卫：已修正为 Vue Router 4 推荐写法
+router.beforeEach((to, from) => {
   // 设置页面标题
   document.title = (to.meta.title as string) || '猫咪社交与健康管理APP';
 
-  // 检查路由是否需要认证
   const requiresAuth = to.meta.requiresAuth;
   if (requiresAuth) {
-    // 这里可以检查用户是否已登录
-    // 检查本地存储中是否有token
     const token = localStorage.getItem('token');
     if (!token) {
-      // 如果没有登录，重定向到登录页面
-      next({ name: 'Login' });
-    } else {
-      // 如果已登录，继续执行
-      next();
+      // 未登录且访问受限页面，跳转到登录页
+      return { name: 'Login' };
     }
-  } else {
-    // 不需要认证的路由，直接继续
-    next();
   }
+  // 默认放行
+  return true;
 });
 
 export default router;
