@@ -38,8 +38,9 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
-import { apiService } from '@/api/apiService'; // 引入你的万能接口库
+import { getAllPetProfiles } from '@/api/apiService'; // 正确姿势 🆕
 import type { PetProfile } from '@/types/cat';
+
 
 const router = useRouter();
 const cats = ref<PetProfile[]>([]);
@@ -51,7 +52,7 @@ onMounted(async () => {
   try {
     showToast({ type: 'loading', message: '正在呼唤主子...', duration: 0 });
     // 💥 看到没？这就是你之前搭好的基建！一行代码就能拿到数据！
-    const res = await apiService.getAllPetProfiles(); 
+  const res = await getAllPetProfiles(); // 正确姿势 🆕
     cats.value = res.data || [];
     showToast.clear();
   } catch (error) {
