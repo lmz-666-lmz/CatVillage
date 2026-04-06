@@ -1,115 +1,84 @@
 <template>
-  <div class="login">
-    <h1>用户登录</h1>
-    <form @submit.prevent="handleLogin">
-      <div class="input-group">
-        <label for="username">用户名:</label>
-        <input 
-          id="username" 
-          v-model="username" 
-          type="text" 
-          placeholder="请输入用户名"
-          required
+  <div class="login-page">
+    <h2 class="title">欢迎回到猫村 🐾</h2>
+
+    <van-form @submit="onSubmit">
+      <van-cell-group inset>
+        <van-field
+          v-model="username"
+          name="username"
+          label="账号"
+          placeholder="请输入账号"
+          :rules="[{ required: true, message: '请填写账号' }]"
         />
-      </div>
-      
-      <div class="input-group">
-        <label for="password">密码:</label>
-        <input 
-          id="password" 
-          v-model="password" 
-          type="password" 
+        <van-field
+          v-model="password"
+          type="password"
+          name="password"
+          label="密码"
           placeholder="请输入密码"
-          required
+          :rules="[{ required: true, message: '请填写密码' }]"
         />
+      </van-cell-group>
+
+      <div style="margin: 32px 16px;">
+        <van-button round block type="primary" native-type="submit">
+          点我登录
+        </van-button>
       </div>
-      
-      <button type="submit" :disabled="loading">
-        {{ loading ? '登录中...' : '登录' }}
-      </button>
-    </form>
+    </van-form>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useUserStore } from '@/stores/user';
+import { showToast } from 'vant'; // Vant 的轻提示工具
+import request from '@/utils/request'; // 你的核心请求工具
 
 const router = useRouter();
-const userStore = useUserStore();
 
+// 定义前端输入的变量
 const username = ref('');
 const password = ref('');
-const loading = ref(false);
 
-const handleLogin = async () => {
-  loading.value = true;
-  
+// 点击按钮后触发的真实逻辑！
+const onSubmit = async (values: any) => {
   try {
-    // 这里模拟登录请求，实际开发中需要调用API
-    // const response = await loginApi({ username: username.value, password: password.value });
-    // 模拟成功登录，设置一个假的token
-    await userStore.login('fake-token-' + Date.now());
-    await userStore.setUserInfo({
-      id: '1',
-      username: username.value,
-      nickname: username.value,
-      avatar: '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    showToast({ type: 'loading', message: '正在进入猫村...', forbidClick: true });
+
+    // 发送真正的网络请求到后端
+    const res = await request({
+      url: '/auth/login',
+      method: 'POST',
+      data: {
+        username: values.username,
+        password: values.password
+      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
+
+    // 拿到你刚才看到的那个长长的 token，存起来
+    localStorage.setItem('token', res.access_token);
     
-    // 登录成功后跳转到首页
-    router.push({ name: 'Home' });
+    showToast({ type: 'success', message: '登录成功！' });
+
+    // 丝滑跳转到首页
+    router.push('/');
+    
   } catch (error) {
-    console.error('登录失败:', error);
-    alert('登录失败，请检查用户名和密码');
-  } finally {
-    loading.value = false;
+    showToast({ type: 'fail', message: '账号或密码错啦' });
   }
 };
 </script>
 
 <style scoped>
-.login {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 20px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+.login-page {
+  padding-top: 80px;
 }
-
-.input-group {
-  margin-bottom: 15px;
-}
-
-.input-group label {
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-}
-
-.input-group input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  box-sizing: border-box;
-}
-
-button {
-  width: 100%;
-  padding: 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-button:disabled {
-  background-color: #cccccc;
-  cursor: not-allowed;
+.title {
+  text-align: center;
+  color: #333;
+  margin-bottom: 40px;
 }
 </style>

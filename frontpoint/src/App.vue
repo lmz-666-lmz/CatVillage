@@ -1,27 +1,32 @@
 <template>
-  <router-view />
+  <div class="app-container">
+    <div class="main-content">
+      <router-view />
+    </div>
+
+    <van-tabbar v-if="!$route.meta.hideTabbar" v-model="activeTab" route>
+      <van-tabbar-item icon="home-o" to="/">首页</van-tabbar-item>
+      <van-tabbar-item icon="comment-o" to="/ai-assistant">AI助理</van-tabbar-item>
+      <van-tabbar-item icon="apps-o" to="/cats">猫咪</van-tabbar-item>
+      <van-tabbar-item icon="user-o" to="/profile">我的</van-tabbar-item>
+    </van-tabbar>
+  </div>
 </template>
 
-<script setup>
-import { onMounted } from 'vue'
-import request from '@/utils/request'
-
-onMounted(async () => {
-  console.log("🚀 重新开始探测前后端生命线...")
-  try {
-    const res = await request({
-      url: '/auth/login',
-      method: 'POST',
-      data: {
-        username: "mingzhe", // 这里的账号需要你在 Swagger 里先注册
-        password: "123456"
-      },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    })
-    console.log("✅ 登录接口完美打通！数据：", res)
-  } catch (err) {
-    // 看到 401 报错说明连接成功，只是账号不对
-    console.error("❌ 探测详情：", err)
-  }
-})
+<script setup lang="ts">
+import { ref } from 'vue';
+const activeTab = ref(0);
 </script>
+
+<style>
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 50px; /* 为底部导航留出空间 */
+}
+</style>
