@@ -15,9 +15,15 @@ from app.schemas.ai_assistant import ChatHistoryResponse, ChatRequest
 
 router = APIRouter(prefix="/api/v1/ai-assistant", tags=["AI Assistant"])
 
+AI_API_KEY = os.getenv("AI_API_KEY")
+AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.deepseek.com")
+
+if not AI_API_KEY or AI_API_KEY.strip() in {"", "你的真实API密钥"}:
+    print("warning: AI_API_KEY is missing or still a placeholder")
+
 client = OpenAI(
-    api_key=os.getenv("AI_API_KEY"),
-    base_url=os.getenv("AI_BASE_URL", "https://api.deepseek.com"),
+    api_key=AI_API_KEY,
+    base_url=AI_BASE_URL,
 )
 
 
@@ -89,6 +95,9 @@ def chat(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    if not AI_API_KEY or AI_API_KEY.strip() in {"", "你的真实API密钥"}:
+        raise HTTPException(status_code=500, detail="AI API key is not configured")
+
     cat_profile = _ensure_pet_owner(db, request.pet_id, current_user.id)
 
     latest_weight = (

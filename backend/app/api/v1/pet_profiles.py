@@ -47,7 +47,12 @@ def list_cat_profiles(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(CatProfile).filter(CatProfile.user_id == current_user.id)
+    # SQL Server requires ORDER BY when OFFSET/LIMIT is used.
+    query = (
+        db.query(CatProfile)
+        .filter(CatProfile.user_id == current_user.id)
+        .order_by(CatProfile.created_at.desc())
+    )
     total = query.count()
     cat_profiles = query.offset((page - 1) * pageSize).limit(pageSize).all()
 

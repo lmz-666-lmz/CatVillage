@@ -26,6 +26,11 @@
           点我登录
         </van-button>
       </div>
+
+      <div class="register-link">
+        还没有账号？
+        <router-link to="/register">立即注册</router-link>
+      </div>
     </van-form>
   </div>
 </template>
@@ -33,8 +38,8 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { showToast } from 'vant'; // Vant 的轻提示工具
-import request from '@/utils/request'; // 你的核心请求工具
+import { closeToast, showToast } from 'vant';
+import { loginUser } from '@/api/apiService';
 
 const router = useRouter();
 
@@ -46,27 +51,21 @@ const password = ref('');
 const onSubmit = async (values: any) => {
   try {
     showToast({ type: 'loading', message: '正在进入猫村...', forbidClick: true });
-
-    // 发送真正的网络请求到后端
-    const res = await request({
-      url: '/auth/login',
-      method: 'POST',
-      data: {
-        username: values.username,
-        password: values.password
-      },
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-    });
+    const res = await loginUser(values.username, values.password);
 
     // 拿到你刚才看到的那个长长的 token，存起来
     localStorage.setItem('token', res.access_token);
-    
+    // 避免切换账号后沿用旧账号的猫咪缓存，导致 AI 使用错误 pet_id
+    localStorage.removeItem('cats');
+    localStorage.removeItem('currentCatId');
+    closeToast();
     showToast({ type: 'success', message: '登录成功！' });
 
     // 丝滑跳转到首页
     router.push('/');
     
   } catch (error) {
+    closeToast();
     showToast({ type: 'fail', message: '账号或密码错啦' });
   }
 };
@@ -80,5 +79,17 @@ const onSubmit = async (values: any) => {
   text-align: center;
   color: #333;
   margin-bottom: 40px;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 8px;
+  color: #666;
+}
+
+.register-link a {
+  color: #ff8a00;
+  font-weight: 700;
+  text-decoration: none;
 }
 </style>
