@@ -1,110 +1,151 @@
 <template>
-  <div class="page-container add-cat-page">
-    <van-nav-bar title="宠物设置" left-arrow @click-left="router.back()" />
+  <div class="bg-background text-on-background antialiased">
+    <div class="mx-auto w-full max-w-[393px] relative flex flex-col overflow-hidden bg-background min-h-[100dvh] font-body">
+      <!-- TopAppBar -->
+      <header class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[393px] z-50 bg-white/70 backdrop-blur-xl flex items-center justify-between px-6 py-4">
+        <button type="button" class="transition-all duration-200 active:scale-95 text-stone-500" @click="router.back()">
+          <van-icon name="arrow-left" size="20" />
+        </button>
+        <h1 class="font-headline font-semibold text-lg tracking-tight text-orange-600">添加猫咪档案</h1>
+        <button type="button" class="transition-all duration-200 active:scale-95 text-stone-500" @click="onNotificationsClick">
+          <van-icon name="bell-o" size="20" />
+        </button>
+      </header>
 
-    <van-form @submit="onSubmit">
-      <div class="content">
-        <div class="avatar-block">
-          <h2 class="page-title">上传猫咪头像</h2>
-          <p class="subtitle">为您的爱宠设置一个漂亮的头像</p>
-
-          <van-uploader
-            v-model="avatarFileList"
-            :max-count="1"
-            :preview-image="false"
-            :after-read="onAvatarRead"
-          >
-            <div class="avatar-ring">
-              <van-image v-if="avatarUrl" :src="avatarUrl" fit="cover" class="avatar-image" />
-              <div v-else class="avatar-placeholder">🐱</div>
-              <div class="camera-icon"><van-icon name="photograph" /></div>
+      <!-- Main Content -->
+      <main class="flex-1 overflow-y-auto pt-24 pb-32 px-6 no-scrollbar">
+        <!-- Avatar Upload Section -->
+        <div class="flex flex-col items-center mb-10">
+          <input
+            ref="avatarInputRef"
+            type="file"
+            accept="image/*"
+            class="hidden"
+            @change="onAvatarChange"
+          />
+          <button type="button" class="flex flex-col items-center" @click="openAvatarPicker">
+            <div class="relative group">
+              <div
+                class="w-28 h-28 rounded-full bg-surface-container-high flex items-center justify-center border-4 border-white shadow-sm overflow-hidden"
+              >
+                <img
+                  v-if="avatarPreviewUrl"
+                  class="w-full h-full object-cover"
+                  :src="avatarPreviewUrl"
+                  alt="猫咪头像"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center opacity-80">
+                  <van-icon name="photo-o" size="34" class="text-on-surface-variant" />
+                </div>
+                <div class="absolute inset-0 bg-black/5 flex items-center justify-center">
+                  <van-icon name="photograph" size="28" class="text-on-surface-variant" />
+                </div>
+              </div>
+              <div class="absolute bottom-1 right-1 bg-primary-container text-white p-1.5 rounded-full shadow-lg border-2 border-white">
+                <van-icon name="edit" size="14" />
+              </div>
             </div>
-          </van-uploader>
-          <p class="avatar-tip">点击更换头像（支持圆框裁剪）</p>
+            <p class="mt-4 text-label-md text-on-surface-variant font-medium">点击上传猫咪头像</p>
+          </button>
         </div>
 
-        <section class="card-section">
-          <h3 class="section-title">基础信息</h3>
-          <div class="field-wrap">
-            <label class="field-label" for="cat-name">猫咪昵称</label>
-            <van-field
-              id="cat-name"
-              v-model="catName"
-              name="catName"
-              placeholder="输入您的猫咪名字"
-              :rules="[{ required: true, message: '请输入猫咪昵称' }]"
-            />
+        <!-- Form Fields -->
+        <div class="space-y-6">
+          <!-- Field: Name -->
+          <div class="space-y-2">
+            <label class="text-label-md font-semibold text-on-surface-variant ml-1">猫咪名字</label>
+            <div class="relative">
+              <input
+                v-model="form.name"
+                class="w-full h-14 px-4 bg-surface-container-lowest rounded-xl border-none ring-1 ring-surface-container-high focus:ring-2 focus:ring-primary-container/30 transition-all outline-none text-body-md"
+                placeholder="输入超可爱的名字"
+                type="text"
+              />
+            </div>
           </div>
 
-          <div class="field-wrap">
-            <label class="field-label">性别选择</label>
-            <div class="gender-options">
-              <button type="button" class="gender-btn" :class="{ active: gender === 1 }" @click="gender = 1">
-                <span class="male-dot">♂</span>
-                <span>弟弟</span>
+          <!-- Field: Breed -->
+          <div class="space-y-2">
+            <label class="text-label-md font-semibold text-on-surface-variant ml-1">品种选择</label>
+            <div class="relative">
+              <select
+                v-model="form.breed"
+                class="w-full h-14 px-4 bg-surface-container-lowest rounded-xl border-none ring-1 ring-surface-container-high focus:ring-2 focus:ring-primary-container/30 transition-all outline-none text-body-md appearance-none"
+              >
+                <option disabled value="">选择猫咪品种</option>
+                <option v-for="option in breedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+              </select>
+              <van-icon name="arrow-down" class="absolute right-4 top-4 text-on-surface-variant pointer-events-none" />
+            </div>
+          </div>
+
+          <!-- Horizontal Group -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="space-y-2">
+              <label class="text-label-md font-semibold text-on-surface-variant ml-1">年龄/生日</label>
+              <input
+                v-model="form.ageBirthdayText"
+                class="w-full h-14 px-4 bg-surface-container-lowest rounded-xl border-none ring-1 ring-surface-container-high focus:ring-2 focus:ring-primary-container/30 transition-all outline-none text-body-md"
+                placeholder="2岁 / 2022-05"
+                type="text"
+                inputmode="numeric"
+              />
+            </div>
+            <div class="space-y-2">
+              <label class="text-label-md font-semibold text-on-surface-variant ml-1">体重 (kg)</label>
+              <input
+                v-model="form.weightKg"
+                class="w-full h-14 px-4 bg-surface-container-lowest rounded-xl border-none ring-1 ring-surface-container-high focus:ring-2 focus:ring-primary-container/30 transition-all outline-none text-body-md"
+                placeholder="4.5"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="0.1"
+              />
+            </div>
+          </div>
+
+          <!-- Multi-select Tags: Vaccine -->
+          <div class="space-y-3">
+            <label class="text-label-md font-semibold text-on-surface-variant ml-1">疫苗情况</label>
+            <div class="flex flex-wrap gap-2">
+              <button
+                v-for="tag in vaccineTags"
+                :key="tag"
+                type="button"
+                class="px-4 py-2 rounded-full text-xs font-medium transition-all active:scale-95"
+                :class="isVaccineSelected(tag)
+                  ? 'bg-primary-container text-white'
+                  : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'"
+                @click="toggleVaccine(tag)"
+              >
+                {{ tag }}
               </button>
-              <button type="button" class="gender-btn" :class="{ active: gender === 0 }" @click="gender = 0">
-                <span class="female-dot">♀</span>
-                <span>妹妹</span>
+              <button
+                type="button"
+                class="px-4 py-2 rounded-full text-xs font-medium border border-dashed border-outline-variant text-on-surface-variant flex items-center gap-1"
+                @click="onAddCustomVaccine"
+              >
+                <van-icon name="plus" size="14" />
+                自定义
               </button>
             </div>
           </div>
+        </div>
+      </main>
 
-          <div class="sterilize-row">
-            <span>是否绝育</span>
-            <van-switch v-model="isNeutered" />
-          </div>
-        </section>
-
-        <section class="card-section">
-          <h3 class="section-title">详细资料</h3>
-          <div class="grid-two">
-            <div class="field-wrap">
-              <label class="field-label">品种</label>
-              <van-dropdown-menu class="dropdown-menu">
-                <van-dropdown-item v-model="breed" :options="breedOptions" />
-              </van-dropdown-menu>
-            </div>
-
-            <div class="field-wrap">
-              <label class="field-label">出生日期</label>
-              <van-field readonly clickable :value="birthday" placeholder="请选择" @click="showDatePicker = true" />
-            </div>
-          </div>
-        </section>
-
-        <section class="card-section">
-          <h3 class="section-title">健康状况</h3>
-          <div class="health-tags">
-            <button
-              v-for="tag in healthTagOptions"
-              :key="tag"
-              type="button"
-              class="health-tag"
-              :class="{ active: healthTags.includes(tag) }"
-              @click="toggleHealthTag(tag)"
-            >
-              {{ tag }}
-            </button>
-          </div>
-        </section>
+      <!-- Bottom CTA -->
+      <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[393px] px-6 pb-10 pt-4 bg-gradient-to-t from-background via-background to-transparent">
+        <button
+          type="button"
+          class="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-cta transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-60"
+          :disabled="saving"
+          @click="onSave"
+        >
+          保存
+        </button>
       </div>
-
-      <div class="bottom-actions">
-        <van-button class="submit-btn" round block type="primary" native-type="submit">完成</van-button>
-      </div>
-    </van-form>
-
-    <van-popup v-model:show="showDatePicker" position="bottom" round>
-      <van-date-picker
-        v-model="currentDate"
-        title="选择出生日期"
-        :min-date="minDate"
-        :max-date="maxDate"
-        @confirm="onConfirmDate"
-        @cancel="showDatePicker = false"
-      />
-    </van-popup>
+    </div>
   </div>
 </template>
 
@@ -112,297 +153,159 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { closeToast, showToast } from 'vant';
-import type { UploaderFileListItem } from 'vant';
-import { createPetProfile } from '@/api/apiService';
+import { useCatManagement } from '@/composables/useCatManagement';
+import type { CreateCatProfileRequest } from '@/types/cat';
+
+interface BreedOption {
+  label: string;
+  value: string;
+}
+
+interface AddCatFormState {
+  name: string;
+  breed: string;
+  ageBirthdayText: string;
+  weightKg: string;
+}
 
 const router = useRouter();
+const { createCat } = useCatManagement();
 
-const catName = ref('');
-const gender = ref<0 | 1>(1);
-const isNeutered = ref(false);
-const avatarUrl = ref('');
-const avatarFileList = ref<UploaderFileListItem[]>([]);
+const saving = ref<boolean>(false);
+const avatarInputRef = ref<HTMLInputElement | null>(null);
+const avatarPreviewUrl = ref<string>('');
 
-const breedOptions = [
-  { text: '英国短毛猫', value: '英国短毛猫' },
-  { text: '暹罗猫', value: '暹罗猫' },
-  { text: '布偶猫', value: '布偶猫' },
-  { text: '缅因猫', value: '缅因猫' },
-  { text: '中华田园猫', value: '中华田园猫' }
+const form = ref<AddCatFormState>({
+  name: '',
+  breed: '',
+  ageBirthdayText: '',
+  weightKg: ''
+});
+
+const breedOptions: BreedOption[] = [
+  { label: '英短蓝猫', value: '英短蓝猫' },
+  { label: '布偶猫', value: '布偶猫' },
+  { label: '田园猫', value: '田园猫' },
+  { label: '暹罗猫', value: '暹罗猫' },
+  { label: '缅因猫', value: '缅因猫' }
 ];
-const breed = ref('英国短毛猫');
 
-const minDate = new Date(2010, 0, 1);
-const maxDate = new Date();
-const showDatePicker = ref(false);
-const currentDate = ref([String(maxDate.getFullYear()), String(maxDate.getMonth() + 1).padStart(2, '0'), String(maxDate.getDate()).padStart(2, '0')]);
-const birthday = ref('2022-05-12');
+const vaccineTags = ['三联疫苗', '狂犬疫苗', '体内驱虫', '体外驱虫'] as const;
+type VaccineTag = (typeof vaccineTags)[number];
+const selectedVaccines = ref<VaccineTag[]>(['三联疫苗']);
 
-const healthTagOptions = ['肠胃脆弱', '曾患猫藓', '无病史', '已打疫苗', '挑食'];
-const healthTags = ref<string[]>(['肠胃脆弱']);
+const isVaccineSelected = (tag: VaccineTag): boolean => selectedVaccines.value.includes(tag);
 
-const ageInMonths = computed(() => {
-  const [year, month] = birthday.value.split('-').map(Number);
-  if (!year || !month) {
+const toggleVaccine = (tag: VaccineTag): void => {
+  if (selectedVaccines.value.includes(tag)) {
+    selectedVaccines.value = selectedVaccines.value.filter((t) => t !== tag);
+    return;
+  }
+  selectedVaccines.value = [...selectedVaccines.value, tag];
+};
+
+const parseBirthdayMonth = (value: string): { year: number; month: number } | null => {
+  const match = value.match(/(\d{4})-(\d{1,2})/);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (!Number.isFinite(year) || !Number.isFinite(month) || month < 1 || month > 12) {
+    return null;
+  }
+  return { year, month };
+};
+
+const ageInMonths = computed<number>(() => {
+  const parsed = parseBirthdayMonth(form.value.ageBirthdayText);
+  if (!parsed) {
     return 1;
   }
   const now = new Date();
-  return Math.max(1, (now.getFullYear() - year) * 12 + (now.getMonth() + 1 - month));
+  const months = (now.getFullYear() - parsed.year) * 12 + (now.getMonth() + 1 - parsed.month);
+  return Math.max(1, months);
 });
 
-const onAvatarRead = (file: UploaderFileListItem | UploaderFileListItem[]) => {
-  const fileItem = Array.isArray(file) ? file[0] : file;
-  if (!fileItem) {
+const weightNumber = computed<number | undefined>(() => {
+  const raw = form.value.weightKg.trim();
+  if (!raw) {
+    return undefined;
+  }
+  const num = Number(raw);
+  if (!Number.isFinite(num) || num <= 0) {
+    return undefined;
+  }
+  return num;
+});
+
+const openAvatarPicker = (): void => {
+  avatarInputRef.value?.click();
+};
+
+const onAvatarChange = (event: Event): void => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  if (!file) {
     return;
   }
-  if (typeof fileItem.content === 'string') {
-    avatarUrl.value = fileItem.content;
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    if (typeof reader.result === 'string') {
+      avatarPreviewUrl.value = reader.result;
+    }
+  };
+  reader.readAsDataURL(file);
+};
+
+const onNotificationsClick = (): void => {
+  // TODO: 可在此接入 useMessaging() / 通知中心路由跳转
+};
+
+const onAddCustomVaccine = (): void => {
+  // TODO: 原型仅展示入口；如需自定义标签，可后续设计交互（不要在这里直接弹窗以免偏离原型）。
+};
+
+const onSave = async (): Promise<void> => {
+  if (!form.value.name.trim()) {
+    showToast({ type: 'fail', message: '请输入猫咪名字' });
+    return;
   }
-};
-
-const onConfirmDate = ({ selectedValues }: { selectedValues: string[] }) => {
-  birthday.value = `${selectedValues[0]}-${selectedValues[1]}-${selectedValues[2]}`;
-  currentDate.value = selectedValues;
-  showDatePicker.value = false;
-};
-
-const toggleHealthTag = (tag: string) => {
-  if (healthTags.value.includes(tag)) {
-    healthTags.value = healthTags.value.filter(item => item !== tag);
-  } else {
-    healthTags.value = [...healthTags.value, tag];
+  if (!form.value.breed) {
+    showToast({ type: 'fail', message: '请选择猫咪品种' });
+    return;
   }
-};
 
-const onSubmit = async () => {
-  showToast({ type: 'loading', message: '正在创建档案...', forbidClick: true, duration: 0 });
+  const payload: CreateCatProfileRequest = {
+    name: form.value.name.trim(),
+    breed: form.value.breed,
+    age: ageInMonths.value,
+    gender: 1,
+    weight: weightNumber.value,
+    vaccineStatus: selectedVaccines.value.join('、'),
+    avatarUrl: avatarPreviewUrl.value || undefined
+  };
+
+  saving.value = true;
+  showToast({ type: 'loading', message: '正在保存...', forbidClick: true, duration: 0 });
+
   try {
-    await createPetProfile({
-      name: catName.value,
-      breed: breed.value,
-      age: ageInMonths.value,
-      gender: gender.value,
-      isNeutered: isNeutered.value,
-      medicalHistory: healthTags.value.join('、'),
-      avatarUrl: avatarUrl.value
-    });
+    // 复用现有 composable：会调用 Pinia + API 并同步本地列表
+    await createCat(payload);
     closeToast();
     showToast({ type: 'success', message: '猫咪档案创建成功' });
     router.replace({ name: 'Cats' });
-  } catch (error) {
+  } catch {
     closeToast();
     showToast({ type: 'fail', message: '创建失败，请稍后再试' });
+  } finally {
+    saving.value = false;
   }
 };
 </script>
 
 <style scoped>
-.page-container {
-  min-height: 100vh;
-  background: #f7f7f8;
-}
-
-.content {
-  padding: 8px 16px 24px;
-}
-
-.avatar-block {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-.page-title {
-  margin: 2px 0 6px;
-  font-size: 36px;
-  line-height: 1.2;
-  font-weight: 800;
-  color: #121826;
-}
-
-.subtitle {
-  margin: 0 0 16px;
-  font-size: 15px;
-  color: #5a6d86;
-}
-
-.avatar-ring {
-  width: 180px;
-  height: 180px;
-  margin: 0 auto;
-  border-radius: 50%;
-  overflow: hidden;
-  position: relative;
-  border: 4px solid #9a5f1b;
-  box-shadow: 0 14px 24px rgba(154, 95, 27, 0.18);
-}
-
-.avatar-image,
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 68px;
-  background: linear-gradient(135deg, #ffcb8f 0%, #ffb86b 100%);
-}
-
-.camera-icon {
-  position: absolute;
-  right: 0;
-  bottom: 4px;
-  width: 44px;
-  height: 44px;
-  border-radius: 14px;
-  background: #ff8a00;
-  color: #fff;
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.avatar-tip {
-  margin-top: 12px;
-  color: #ff8a00;
-  font-weight: 600;
-}
-
-.card-section {
-  margin-bottom: 16px;
-}
-
-.section-title {
-  font-size: 34px;
-  margin: 0 0 12px;
-  font-weight: 800;
-  color: #121826;
-  position: relative;
-  padding-left: 12px;
-}
-
-.section-title::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 5px;
-  bottom: 5px;
-  width: 4px;
-  border-radius: 2px;
-  background: #ff8a00;
-}
-
-.field-wrap {
-  margin-bottom: 12px;
-}
-
-.field-label {
-  display: block;
-  margin-bottom: 8px;
-  color: #2b2f33;
-  font-size: 14px;
-}
-
-.gender-options {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 12px;
-}
-
-.gender-btn {
-  height: 64px;
-  border-radius: 22px;
-  border: 1px solid #eedcc7;
-  background: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 28px;
-  color: #151c2b;
-}
-
-.gender-btn.active {
-  border-color: #ff9b29;
-  background: #fff6eb;
-}
-
-.male-dot {
-  color: #4f8df7;
-}
-
-.female-dot {
-  color: #e85ea3;
-}
-
-.sterilize-row {
-  border-radius: 22px;
-  background: #fff;
-  border: 1px solid #f0e2cf;
-  height: 64px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.grid-two {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.dropdown-menu {
-  border-radius: 18px;
-  overflow: hidden;
-}
-
-.health-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.health-tag {
-  border: 1px solid #d8e0ec;
-  background: #eaf0f8;
-  color: #374151;
-  border-radius: 999px;
-  padding: 8px 16px;
-  font-size: 14px;
-}
-
-.health-tag.active {
-  border-color: #ff9b29;
-  color: #ff8a00;
-  background: #fff6eb;
-}
-
-.bottom-actions {
-  padding: 8px 16px 26px;
-}
-
-.submit-btn {
-  height: 56px;
-  border: none;
-  background: linear-gradient(135deg, #ff9900 0%, #ff7a00 100%);
-  font-size: 30px;
-  font-weight: 700;
-  box-shadow: 0 16px 28px rgba(255, 122, 0, 0.3);
-}
-
-:deep(.van-nav-bar__title) {
-  font-size: 36px;
-  font-weight: 800;
-  color: #111827;
-}
-
-:deep(.van-field) {
-  border-radius: 22px;
-  border: 1px solid #f0dcc0;
-  background: #fff;
-}
+/* No extra styles beyond prototype utility classes */
 </style>

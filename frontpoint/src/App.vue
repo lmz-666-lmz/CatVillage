@@ -24,7 +24,10 @@ const activeTab = ref(0);
 // 判断逻辑：如果是登录页，就不显示底部导航栏
 const showTabbar = computed(() => {
   const hiddenRoutes = ['Login', 'Register'];
-  return !hiddenRoutes.includes(route.name as string);
+  if (hiddenRoutes.includes(route.name as string)) {
+    return false;
+  }
+  return !route.meta.hideTabbar;
 });
 </script>
 

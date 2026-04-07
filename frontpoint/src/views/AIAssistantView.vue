@@ -127,8 +127,9 @@ const ensureCatReady = async () => {
   // 始终以服务端列表为准，避免旧缓存导致使用了无效 pet_id
   await catsStore.fetchAllCats();
 
-  if (!currentCatStore.getCurrentCatId && catsStore.getAllCats.length > 0) {
-    currentCatStore.setCurrentCat(catsStore.getAllCats[0].id);
+  const firstCat = catsStore.getAllCats[0];
+  if (!currentCatStore.getCurrentCatId && firstCat) {
+    currentCatStore.setCurrentCat(firstCat.id);
   }
 };
 

@@ -137,7 +137,7 @@ export function getEmotionStatistics(params: { catId?: string; startDate?: strin
     ...response,
     data: {
       moodTrend: [],
-      emotionDistribution: response.data.distribution.map((item) => ({
+      emotionDistribution: response.data.distribution.map((item: { label: string; count: number; percentage: number }) => ({
         emotionTag: item.label,
         count: item.count,
         percentage: item.percentage

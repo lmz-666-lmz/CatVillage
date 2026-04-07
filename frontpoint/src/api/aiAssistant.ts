@@ -54,6 +54,8 @@ export function chatWithAI(data: ChatWithAIRequest): Promise<ApiResponse<ChatWit
   return request<BackendChatResponse>({
     url: '/ai-assistant/chat',
     method: 'post',
+    // AI 响应通常超过 10s；覆盖全局 axios timeout，避免前端 0B/挂起
+    timeout: 60000,
     data: {
       pet_id: data.catId,
       user_message: data.message

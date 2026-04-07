@@ -1,9 +1,12 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import './assets/tailwind.css'
 
 // 引入 Vant 核心组件和全局样式
 import Vant from 'vant';
 import 'vant/lib/index.css';
+
+import './assets/tailwind.css';
 
 import App from './App.vue'
 import router from './router'

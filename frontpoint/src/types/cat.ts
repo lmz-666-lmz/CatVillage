@@ -49,6 +49,9 @@ export interface CatProfileListResponse {
   list: CatProfileResponse[];
 }
 
+// 兼容旧代码：部分模块仍在使用 CatProfile 作为档案实体类型
+export type CatProfile = CatProfileResponse;
+
 // 猫咪品种枚举
 export enum CatBreed {
   BritishShorthair = '英国短毛猫',

@@ -31,7 +31,7 @@ const routes: RouteRecordRaw[] = [
     path: '/cats/add',
     name: 'AddCat',
     component: () => import('../views/AddCatView.vue'),
-    meta: { title: '添加猫咪', requiresAuth: true }
+    meta: { title: '添加猫咪', requiresAuth: true, hideTabbar: true }
   },
   {
     path: '/cats/:id/edit',
