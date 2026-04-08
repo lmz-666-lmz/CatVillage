@@ -71,3 +71,34 @@ npm run test:e2e -- --debug
 ```sh
 npm run lint
 ```
+
+## Cat Village Incremental Notes (Added Only)
+
+This section is appended for project-specific updates and does not replace the original Vite template content above.
+
+### 2026-04-08 Updates
+
+- Fixed router crash caused by missing named exports in [src/api/social.ts](src/api/social.ts):
+  - Added `getFollowingDynamicsList`
+  - Added `toggleFavoriteDynamic`
+  - Added `toggleFollowUser`
+  - Added `toggleCommentLike`
+  - Added `getHotTopics`
+- Kept [src/composables/useSocialFeatures.ts](src/composables/useSocialFeatures.ts) aligned with social API exports to avoid runtime `does not provide an export named ...` errors.
+- Updated profile navigation behavior in [src/views/UserProfileView.vue](src/views/UserProfileView.vue):
+  - `我的萌宠` now opens the cat archive page (`CatArchive`) instead of `喵喵台` (`Cats`).
+
+### Local Run Checklist
+
+When running locally with Vite HMR:
+
+1. Start backend service in `backend`.
+2. Start frontend with `npm run dev` in `frontpoint`.
+3. If route/module errors persist after hot reload, do a hard refresh once to clear stale module cache.
+
+### Functional Verification Checklist
+
+- Open `广场` tab: page should render without module import errors.
+- Open `消息` tab: page should render without router navigation errors.
+- Open `我的` -> click `我的萌宠`: should jump to `猫咪档案` page.
+
