@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
+from app.core.dependencies import get_optional_current_user
 from app.database.session import get_db
 from app.models.cat_profile import CatProfile
 from app.models.social import SocialComment, SocialDynamic, SocialLike
@@ -14,23 +15,38 @@ from app.schemas.social import CommentCreate
 router = APIRouter(prefix="/api/v1/social", tags=["social"])
 
 
-def _serialize_dynamic(dynamic: SocialDynamic, current_user: User, db: Session) -> dict:
+def _parse_images(raw_images: str | None) -> list[str]:
+    if not raw_images:
+        return []
+    try:
+        parsed = json.loads(raw_images)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if isinstance(item, str) and item.strip()]
+
+
+def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Session) -> dict:
     user = db.query(User).filter(User.id == dynamic.user_id).first()
     cat = None
     if dynamic.cat_id:
         cat = db.query(CatProfile).filter(CatProfile.id == dynamic.cat_id).first()
 
-    images = json.loads(dynamic.images) if dynamic.images else []
-    is_liked = (
-        db.query(SocialLike)
-        .filter(
-            SocialLike.dynamic_id == dynamic.id,
-            SocialLike.user_id == current_user.id,
-            SocialLike.is_active.is_(True),
+    images = _parse_images(dynamic.images)
+    if current_user:
+        is_liked = (
+            db.query(SocialLike)
+            .filter(
+                SocialLike.dynamic_id == dynamic.id,
+                SocialLike.user_id == current_user.id,
+                SocialLike.is_active.is_(True),
+            )
+            .first()
+            is not None
         )
-        .first()
-        is not None
-    )
+    else:
+        is_liked = False
 
     return {
         "id": dynamic.id,
@@ -45,7 +61,7 @@ def _serialize_dynamic(dynamic: SocialDynamic, current_user: User, db: Session) 
         "commentCount": dynamic.comment_count,
         "createdAt": dynamic.created_at.isoformat() if dynamic.created_at else "",
         "isLiked": is_liked,
-        "isOwner": dynamic.user_id == current_user.id,
+        "isOwner": bool(current_user and dynamic.user_id == current_user.id),
     }
 
 
@@ -105,7 +121,7 @@ def list_dynamics(
     page: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1),
     catId: str | None = Query(None),
-    current_user: User = Depends(get_current_user),
+    current_user: User | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     query = db.query(SocialDynamic)

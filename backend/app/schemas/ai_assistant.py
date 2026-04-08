@@ -7,7 +7,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatHistoryResponse(BaseModel):
-    id: int
+    id: str
     pet_id: str
     question: str
     answer: str

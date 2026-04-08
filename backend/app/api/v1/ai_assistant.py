@@ -6,7 +6,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from openai import OpenAI
 from sqlalchemy.orm import Session
 from fastapi import Query, status
-from sqlalchemy.exc import IntegrityError  # <-- 我加了这个
 
 from app.core.dependencies import get_current_user
 from app.database.session import get_db
@@ -99,7 +98,7 @@ def chat(
     db: Session = Depends(get_db),
 ):
     if not AI_API_KEY or AI_API_KEY.strip() in {"", "你的真实API密钥"}:
-        raise HTTPException(status_code=500, detail="AI API key is not configured")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="AI API key is not configured")
 
     cat_profile = _ensure_pet_owner(db, request.pet_id, current_user.id)
 
@@ -135,27 +134,25 @@ def chat(
             ],
         )
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"AI assistant request failed: {exc}") from exc
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=f"AI assistant request failed: {exc}") from exc
 
     reply_text = response.choices[0].message.content if response.choices else ""
 
     # ===================== 我修复的核心代码 =====================
     try:
         history = AIChatHistory(
-            id=str(uuid.uuid4()),  # 强制唯一ID，彻底解决重复键
+            id=str(uuid.uuid4()),
             pet_id=request.pet_id,
             user_id=current_user.id,
             question=request.user_message,
             answer=reply_text,
-            created_at=datetime.now()
+            created_at=datetime.utcnow(),
         )
         db.add(history)
         db.commit()
-
-    except IntegrityError:
-        # 数据库报错 → 回滚，但继续返回结果！
+    except Exception as exc:
         db.rollback()
-        print("⚠️ 聊天记录保存失败（主键重复），已跳过保存")
+        print(f"⚠️ 聊天记录保存失败，已跳过保存：{exc}")
     # ==========================================================
 
     # 无论如何都返回结果给前端

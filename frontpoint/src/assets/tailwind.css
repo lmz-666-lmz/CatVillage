@@ -1,7 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.cjs";
 
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  background: #f9f9ff;
+  color: #141b2b;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
 
 /* Keep local utility parity with prototype */
 @layer utilities {

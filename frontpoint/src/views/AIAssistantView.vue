@@ -1,5 +1,17 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在加载 AI 助理...</div>
+    </div>
+
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">组件加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold tracking-tight text-on-background">AI 助理</h1>
@@ -67,6 +79,7 @@
         </button>
       </div>
     </section>
+    </div>
   </div>
 </template>
 
@@ -87,6 +100,8 @@ const { sendMessageToAI, fetchChatHistory, clearCurrentSession } = useAIAssistan
 const draft = ref('');
 const messages = ref<LocalChatItem[]>([]);
 const sending = ref(false);
+const loading = ref(true);
+const error = ref<string | null>(null);
 
 const selectedCatId = computed(() => currentCatStore.getCurrentCatId || catsStore.getAllCats[0]?.id || '');
 const hasCats = computed(() => catsStore.getAllCats.length > 0);
@@ -124,6 +139,21 @@ const loadHistory = async () => {
     messages.value = [{ id: 'init', role: 'assistant', text: '我在这里，随时可以帮你一起照顾猫咪。' }];
   }
 };
+
+const initData = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    await ensureCats();
+    await loadHistory();
+  } catch {
+    error.value = '组件加载失败，请检查后端服务';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const reload = () => initData();
 
 const send = async () => {
   const text = draft.value.trim();
@@ -166,11 +196,6 @@ const clear = async () => {
 };
 
 onMounted(async () => {
-  try {
-    await ensureCats();
-    await loadHistory();
-  } catch {
-    showToast({ type: 'fail', message: '加载猫咪档案失败，请检查登录状态' });
-  }
+  await initData();
 });
 </script>

@@ -1,5 +1,12 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="pageError" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">消息中心加载失败</div>
+      <div class="mt-2">{{ pageError }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <template v-else>
     <template v-if="!activeConversation">
       <header class="flex items-center justify-between">
         <div>
@@ -90,6 +97,7 @@
         </button>
       </div>
     </template>
+    </template>
   </div>
 </template>
 
@@ -103,6 +111,7 @@ const { fetchConversationList, fetchConversationMessages, sendNewMessage, getCur
 
 const loading = ref(false);
 const messagesLoading = ref(false);
+const pageError = ref<string | null>(null);
 
 const conversations = computed(() => getCurrentConversations.value);
 
@@ -124,15 +133,21 @@ const refresh = async () => {
   }
 };
 
+const reload = async () => {
+  pageError.value = null;
+  await refresh();
+};
+
 const openConversation = async (conv: Conversation) => {
   activeConversation.value = conv;
   messages.value = [];
   messagesLoading.value = true;
+  pageError.value = null;
   try {
     const res = await fetchConversationMessages(conv.targetUserId, { page: 1, pageSize: 30 });
     messages.value = res.list;
   } catch {
-    showToast({ type: 'fail', message: '加载消息失败' });
+    pageError.value = '加载消息失败，请稍后重试';
   } finally {
     messagesLoading.value = false;
   }
@@ -159,7 +174,7 @@ const send = async () => {
     });
     messages.value = [...messages.value, sent];
   } catch {
-    showToast({ type: 'fail', message: '发送失败' });
+    pageError.value = '发送失败，请稍后重试';
   }
 };
 

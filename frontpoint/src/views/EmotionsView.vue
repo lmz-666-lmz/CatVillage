@@ -1,5 +1,17 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在加载情绪识别页面...</div>
+    </div>
+
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">情绪识别加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold tracking-tight text-on-background">情绪识别</h1>
@@ -75,6 +87,7 @@
         </div>
       </div>
     </section>
+    </div>
   </div>
 </template>
 
@@ -97,6 +110,8 @@ const audioList = ref<UploaderFileListItem[]>([]);
 const analyzing = ref(false);
 const historyLoading = ref(false);
 const lastResult = ref<RecognizeEmotionResponse | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
 
 const records = computed(() => getCurrentRecords.value);
 
@@ -120,6 +135,21 @@ const ensureCats = async () => {
     currentCatStore.setCurrentCat(first.id);
   }
 };
+
+const initData = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    await ensureCats();
+    await refresh();
+  } catch {
+    error.value = '加载失败，请检查登录状态或后端服务';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const reload = () => initData();
 
 const analyze = async () => {
   const catId = selectedCatId.value;
@@ -159,11 +189,6 @@ const refresh = async () => {
 };
 
 onMounted(async () => {
-  try {
-    await ensureCats();
-    await refresh();
-  } catch {
-    showToast({ type: 'fail', message: '加载失败，请检查登录状态' });
-  }
+  await initData();
 });
 </script>

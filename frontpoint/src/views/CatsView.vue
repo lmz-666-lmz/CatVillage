@@ -1,5 +1,17 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="loading && !cats.length" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在加载猫咪档案...</div>
+    </div>
+
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">猫咪列表加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold tracking-tight text-on-background">我的猫咪</h1>
@@ -72,6 +84,7 @@
         </article>
       </div>
     </section>
+    </div>
   </div>
 </template>
 
@@ -86,6 +99,7 @@ const catsStore = useCatsStore();
 const currentCatStore = useCurrentCatStore();
 
 const loading = ref(false);
+const error = ref<string | null>(null);
 const defaultAvatar = 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg';
 
 const cats = computed(() => catsStore.getAllCats);
@@ -119,6 +133,7 @@ const refresh = async () => {
     return;
   }
   loading.value = true;
+  error.value = null;
   try {
     await catsStore.fetchAllCats();
     const first = catsStore.getAllCats[0];
@@ -126,11 +141,13 @@ const refresh = async () => {
       currentCatStore.setCurrentCat(first.id);
     }
   } catch {
-    showToast({ type: 'fail', message: '加载失败，请检查登录状态或后端服务' });
+    error.value = '加载失败，请检查登录状态或后端服务';
   } finally {
     loading.value = false;
   }
 };
+
+const reload = () => refresh();
 
 onMounted(refresh);
 </script>

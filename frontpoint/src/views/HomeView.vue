@@ -1,5 +1,17 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在加载首页...</div>
+    </div>
+
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">首页加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold tracking-tight text-on-background">猫村</h1>
@@ -58,6 +70,7 @@
         <div class="mt-1 text-xs text-on-surface-variant">会话列表 · 历史消息</div>
       </button>
     </section>
+    </div>
   </div>
 </template>
 
@@ -72,6 +85,8 @@ const catsStore = useCatsStore();
 const currentCatStore = useCurrentCatStore();
 
 const refreshing = ref(false);
+const loading = ref(true);
+const error = ref<string | null>(null);
 
 const currentCat = computed(() => {
   const selectedId = currentCatStore.getCurrentCatId;
@@ -111,5 +126,19 @@ const refresh = async () => {
   }
 };
 
-onMounted(refresh);
+const initData = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    await refresh();
+  } catch {
+    error.value = '首页加载失败，请检查后端服务';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const reload = () => initData();
+
+onMounted(initData);
 </script>

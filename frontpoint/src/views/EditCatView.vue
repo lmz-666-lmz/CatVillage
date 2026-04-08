@@ -7,6 +7,13 @@
       <div class="mt-3 text-sm text-on-surface-variant">正在加载档案...</div>
     </div>
 
+    <div v-else-if="error" class="mt-6 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center">
+      <div class="text-3xl">⚠️</div>
+      <div class="mt-3 text-base font-semibold text-on-background">档案加载失败</div>
+      <div class="mt-1 text-sm text-on-surface-variant">{{ error }}</div>
+      <van-button class="mt-5" block type="primary" @click="reload">重试</van-button>
+    </div>
+
     <div v-else-if="!cat" class="mt-6 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center">
       <div class="text-3xl">😿</div>
       <div class="mt-3 text-base font-semibold text-on-background">未找到猫咪档案</div>
@@ -108,6 +115,7 @@ const { updateCat } = useCatManagement();
 
 const loading = ref(false);
 const saving = ref(false);
+const error = ref<string | null>(null);
 
 const avatarInputRef = ref<HTMLInputElement | null>(null);
 const avatarPreviewUrl = ref<string>('');
@@ -201,6 +209,7 @@ const weightNumber = computed<number | undefined>(() => {
 
 const hydrate = async () => {
   loading.value = true;
+  error.value = null;
   try {
     if (!catsStore.getAllCats.length) {
       await catsStore.fetchAllCats();
@@ -214,10 +223,14 @@ const hydrate = async () => {
     form.value.weightKg = c.weight ? String(c.weight) : '';
     avatarPreviewUrl.value = c.avatarUrl || '';
     selectedVaccines.value = (c.vaccineStatus ? c.vaccineStatus.split('、') : []).filter(Boolean) as VaccineTag[];
+  } catch {
+    error.value = '档案加载失败，请检查后端服务';
   } finally {
     loading.value = false;
   }
 };
+
+const reload = () => hydrate();
 
 const save = async () => {
   if (!form.value.name.trim()) {

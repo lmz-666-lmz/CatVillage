@@ -2,7 +2,7 @@
 
 // API相关常量
 export const API_CONSTANTS = {
-  BASE_URL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  BASE_URL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   TIMEOUT: 10000, // 请求超时时间（毫秒）
   RETRY_COUNT: 3, // 请求重试次数
 };

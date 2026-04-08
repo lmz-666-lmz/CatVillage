@@ -1,5 +1,17 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在准备添加猫咪表单...</div>
+    </div>
+
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">组件加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <van-nav-bar title="添加猫咪" left-arrow @click-left="router.back()" />
 
     <section class="mt-4 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
@@ -76,6 +88,7 @@
         {{ saving ? '保存中...' : '保存' }}
       </button>
     </div>
+    </div>
   </div>
 </template>
 
@@ -84,6 +97,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { closeToast, showToast } from 'vant';
 import { useCatManagement } from '@/composables/useCatManagement';
+import { useCatsStore } from '@/stores';
 import type { CreateCatProfileRequest } from '@/types/cat';
 import { CAT_BREED_OPTIONS } from '@/constants/catBreeds';
 
@@ -96,10 +110,13 @@ interface AddCatFormState {
 
 const router = useRouter();
 const { createCat } = useCatManagement();
+const catsStore = useCatsStore();
 
 const saving = ref<boolean>(false);
 const avatarInputRef = ref<HTMLInputElement | null>(null);
 const avatarPreviewUrl = ref<string>('');
+const loading = ref(true);
+const error = ref<string | null>(null);
 
 const form = ref<AddCatFormState>({
   name: '',
@@ -167,6 +184,20 @@ const openAvatarPicker = (): void => {
   avatarInputRef.value?.click();
 };
 
+const initData = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    await catsStore.fetchAllCats();
+  } catch {
+    error.value = '组件加载失败，请检查后端服务';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const reload = () => initData();
+
 const onAvatarChange = (event: Event): void => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -219,6 +250,8 @@ const onSave = async (): Promise<void> => {
     saving.value = false;
   }
 };
+
+void initData();
 </script>
 
 <style scoped>

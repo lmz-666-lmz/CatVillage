@@ -1,5 +1,17 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在加载发布页面...</div>
+    </div>
+
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">组件加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <van-nav-bar title="发布动态" left-arrow @click-left="router.back()" />
 
     <section class="mt-4 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
@@ -54,6 +66,7 @@
         {{ publishing ? '发布中...' : '发布' }}
       </button>
     </div>
+    </div>
   </div>
 </template>
 
@@ -73,6 +86,8 @@ const currentCatStore = useCurrentCatStore();
 const publishing = ref(false);
 const content = ref('');
 const fileList = ref<UploaderFileListItem[]>([]);
+const loading = ref(true);
+const error = ref<string | null>(null);
 
 const selectedCatId = computed(() => currentCatStore.getCurrentCatId || catsStore.getAllCats[0]?.id || '');
 const hasCats = computed(() => catsStore.getAllCats.length > 0);
@@ -84,6 +99,24 @@ const selectedCatName = computed(() => {
   const cat = catsStore.getCatById(id);
   return cat?.name || '未选择猫咪';
 });
+
+const initData = async () => {
+  loading.value = true;
+  error.value = null;
+  try {
+    await catsStore.fetchAllCats();
+    const first = catsStore.getAllCats[0];
+    if (!currentCatStore.getCurrentCatId && first) {
+      currentCatStore.setCurrentCat(first.id);
+    }
+  } catch {
+    error.value = '组件加载失败，请检查后端服务';
+  } finally {
+    loading.value = false;
+  }
+};
+
+const reload = () => initData();
 
 const publish = async () => {
   const text = content.value.trim();
@@ -116,4 +149,6 @@ const publish = async () => {
     publishing.value = false;
   }
 };
+
+void initData();
 </script>

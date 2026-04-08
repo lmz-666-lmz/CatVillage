@@ -1,5 +1,12 @@
 <template>
   <div class="px-6 pt-6 pb-6">
+    <div v-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">广场加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
+    </div>
+
+    <div v-else>
     <header class="flex items-center justify-between">
       <div>
         <h1 class="text-xl font-semibold tracking-tight text-on-background">广场</h1>
@@ -99,6 +106,7 @@
         </article>
       </div>
     </section>
+    </div>
   </div>
 </template>
 
@@ -117,6 +125,7 @@ const { fetchDynamicsList, likeADynamic, unlikeADynamic, getCurrentDynamics } = 
 
 const loading = ref(false);
 const likingId = ref<string>('');
+const error = ref<string | null>(null);
 const dynamics = computed(() => getCurrentDynamics.value);
 
 const refresh = async () => {
@@ -124,14 +133,22 @@ const refresh = async () => {
     return;
   }
   loading.value = true;
+  error.value = null;
   try {
     await fetchDynamicsList({ page: 1, pageSize: 20 });
-  } catch {
-    showToast({ type: 'fail', message: '加载失败，请稍后重试' });
+  } catch (err: unknown) {
+    const status = typeof err === 'object' && err !== null && 'response' in err
+      ? (err as { response?: { status?: number } }).response?.status
+      : undefined;
+    error.value = status === 401
+      ? '登录已过期，请重新登录后查看广场'
+      : '加载失败，请稍后重试';
   } finally {
     loading.value = false;
   }
 };
+
+const reload = () => refresh();
 
 const toggleLike = async (dynamic: SocialDynamic) => {
   if (likingId.value) {
