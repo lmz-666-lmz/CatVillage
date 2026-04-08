@@ -40,7 +40,7 @@ def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Se
             .filter(
                 SocialLike.dynamic_id == dynamic.id,
                 SocialLike.user_id == current_user.id,
-                SocialLike.is_active.is_(True),
+                SocialLike.is_active == True,
             )
             .first()
             is not None
@@ -136,11 +136,18 @@ def list_dynamics(
         .all()
     )
 
+    safe_list: list[dict] = []
+    for item in items:
+        try:
+            safe_list.append(_serialize_dynamic(item, current_user, db))
+        except Exception as exc:
+            print(f"social.list_dynamics skipped invalid row id={item.id}: {exc}")
+
     return {
         "code": 200,
         "msg": "success",
         "data": {
-            "list": [_serialize_dynamic(item, current_user, db) for item in items],
+            "list": safe_list,
             "total": total,
             "page": page,
             "pageSize": pageSize,
@@ -157,8 +164,13 @@ def get_dynamic_detail(
     dynamic = db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).first()
     if dynamic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dynamic not found")
+    try:
+        data = _serialize_dynamic(dynamic, current_user, db)
+    except Exception as exc:
+        print(f"social.get_dynamic_detail failed id={dynamic_id}: {exc}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Dynamic serialization failed") from exc
 
-    return {"code": 200, "msg": "success", "data": _serialize_dynamic(dynamic, current_user, db)}
+    return {"code": 200, "msg": "success", "data": data}
 
 
 @router.post("/dynamics/{dynamic_id}/like")
@@ -306,11 +318,18 @@ def list_my_dynamics(
         .all()
     )
 
+    safe_list: list[dict] = []
+    for item in items:
+        try:
+            safe_list.append(_serialize_dynamic(item, current_user, db))
+        except Exception as exc:
+            print(f"social.list_my_dynamics skipped invalid row id={item.id}: {exc}")
+
     return {
         "code": 200,
         "msg": "success",
         "data": {
-            "list": [_serialize_dynamic(item, current_user, db) for item in items],
+            "list": safe_list,
             "total": total,
             "page": page,
             "pageSize": pageSize,
