@@ -20,6 +20,8 @@ class CommentResponse(BaseModel):
     dynamicId: str
     content: str
     createdAt: str
+    likeCount: int = 0
+    isLiked: bool = False
     isOwner: bool
 
 
@@ -34,9 +36,13 @@ class DynamicResponse(BaseModel):
     images: List[str] = Field(default_factory=list)
     likeCount: int
     commentCount: int
+    favoriteCount: int = 0
     createdAt: str
     isLiked: bool = False
+    isFavorited: bool = False
+    isFollowing: bool = False
     isOwner: bool = False
+    comments: List[CommentResponse] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

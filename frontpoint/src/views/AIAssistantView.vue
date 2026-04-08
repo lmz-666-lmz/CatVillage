@@ -1,5 +1,5 @@
 <template>
-  <div class="px-6 pt-6 pb-6">
+  <div class="bg-[#f8f7f5] px-4 pt-4 pb-6">
     <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
       <van-loading size="20" />
       <div class="mt-3">正在加载 AI 助理...</div>
@@ -12,15 +12,18 @@
     </div>
 
     <div v-else>
-    <header class="flex items-center justify-between">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight text-on-background">AI 助理</h1>
-        <p class="mt-1 text-sm text-on-surface-variant">{{ selectedCatName }}</p>
+    <header class="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b border-orange-500/10 bg-white/85 px-4 py-3 backdrop-blur-md">
+      <div class="flex items-center gap-2">
+        <van-icon name="notes-o" color="#ff9500" size="18" />
+        <h1 class="text-base font-bold text-[#ff9500]">AI 助理</h1>
       </div>
-      <van-button size="small" plain type="primary" :disabled="!hasCats" @click="clear">
-        清空
-      </van-button>
+      <van-button size="small" plain type="primary" :disabled="!hasCats" @click="clear">清空会话</van-button>
     </header>
+
+    <section class="mt-5 mb-5">
+      <h2 class="text-2xl font-bold tracking-tight text-slate-900">你好，喵主子！</h2>
+      <p class="mt-1 text-sm text-slate-500">{{ selectedCatName }}</p>
+    </section>
 
     <section v-if="!hasCats" class="mt-6 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center">
       <div class="text-3xl">🐱</div>
@@ -31,9 +34,27 @@
       </van-button>
     </section>
 
-    <section v-else class="mt-6">
-      <div class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-        <div class="text-sm text-on-surface-variant">对话记录</div>
+    <section v-else class="mt-4">
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div class="relative overflow-hidden rounded-xl border border-orange-500/5 bg-white p-5 shadow-sm">
+          <div class="mb-3 grid h-11 w-11 place-items-center rounded-full bg-orange-500/10 text-orange-500">
+            <van-icon name="medal-o" size="20" />
+          </div>
+          <div class="text-lg font-bold text-slate-900">AI 医生</div>
+          <p class="mt-1 text-sm leading-relaxed text-slate-500">提供健康咨询与异常诊断建议。</p>
+        </div>
+
+        <div class="relative overflow-hidden rounded-xl border border-orange-500/5 bg-white p-5 shadow-sm">
+          <div class="mb-3 grid h-11 w-11 place-items-center rounded-full bg-orange-500/10 text-orange-500">
+            <van-icon name="bulb-o" size="20" />
+          </div>
+          <div class="text-lg font-bold text-slate-900">AI 养猫</div>
+          <p class="mt-1 text-sm leading-relaxed text-slate-500">按品种和年龄给出喂养与行为建议。</p>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-xl border border-orange-500/5 bg-white p-4 shadow-sm">
+        <div class="text-sm font-semibold text-slate-900">对话记录</div>
 
         <div v-if="messages.length === 0" class="mt-4 text-sm text-on-surface-variant">
           你可以从“猫咪饮食 / 行为 / 健康 / 情绪”任意方向开始提问。
@@ -65,7 +86,7 @@
       <div class="mt-4 flex items-center gap-2">
         <input
           v-model="draft"
-          class="h-11 flex-1 rounded-xl border border-surface-container-high bg-surface-container-lowest px-3 text-sm text-on-background outline-none"
+          class="h-11 flex-1 rounded-xl border border-orange-500/10 bg-white px-3 text-sm text-on-background outline-none"
           placeholder="问问 AI：比如猫咪一直叫怎么办..."
           @keyup.enter="send"
         />
@@ -129,11 +150,13 @@ const loadHistory = async () => {
   }
   try {
     const res = await fetchChatHistory({ catId, page: 1, pageSize: 10 });
-    const items: LocalChatItem[] = res.list.map((it) => ({
-      id: it.id,
-      role: 'assistant',
-      text: it.message
-    }));
+    const items: LocalChatItem[] = [];
+    [...res.list]
+      .sort((left, right) => new Date(left.created_at).getTime() - new Date(right.created_at).getTime())
+      .forEach((item) => {
+        items.push({ id: `q-${item.id}`, role: 'user', text: item.question });
+        items.push({ id: `a-${item.id}`, role: 'assistant', text: item.answer });
+      });
     messages.value = [{ id: 'init', role: 'assistant', text: '我在这里，随时可以帮你一起照顾猫咪。' }, ...items];
   } catch {
     messages.value = [{ id: 'init', role: 'assistant', text: '我在这里，随时可以帮你一起照顾猫咪。' }];

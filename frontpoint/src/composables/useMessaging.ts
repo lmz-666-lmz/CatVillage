@@ -9,6 +9,7 @@ import type {
 } from '@/types/message';
 import { 
   getFriendList, 
+  getFollowerList,
   sendMessage, 
   revokeMessage, 
   updateReadStatus, 
@@ -26,6 +27,7 @@ export function useMessaging() {
   const loading = ref(false);
   const error = ref<string | null>(null);
   const friends = ref<Friend[]>([]);
+  const followers = ref<Friend[]>([]);
   const conversations = ref<Conversation[]>([]);
 
   /**
@@ -42,6 +44,23 @@ export function useMessaging() {
     } catch (err: any) {
       error.value = err.message || '获取好友列表失败';
       console.error('获取好友列表失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const fetchFollowerList = async (params: { page: number; pageSize: number }) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await getFollowerList(params);
+      followers.value = response.data.list || [];
+      return response.data;
+    } catch (err: any) {
+      error.value = err.message || '获取粉丝列表失败';
+      console.error('获取粉丝列表失败:', err);
       throw err;
     } finally {
       loading.value = false;
@@ -189,6 +208,7 @@ export function useMessaging() {
    * 获取当前好友列表
    */
   const getCurrentFriends = computed(() => friends.value);
+  const getCurrentFollowers = computed(() => followers.value);
 
   /**
    * 获取当前会话列表
@@ -208,6 +228,7 @@ export function useMessaging() {
   return {
     // Methods
     fetchFriendList,
+    fetchFollowerList,
     sendNewMessage,
     revokeAMessage,
     markAsRead,
@@ -218,6 +239,7 @@ export function useMessaging() {
 
     // Getters
     getCurrentFriends,
+    getCurrentFollowers,
     getCurrentConversations,
     isLoading,
     getError

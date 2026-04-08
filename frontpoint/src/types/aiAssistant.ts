@@ -16,6 +16,14 @@ export interface ChatWithAIResponse {
   timestamp: string;
 }
 
+export interface ChatHistoryEntry {
+  id: string;
+  pet_id: string;
+  question: string;
+  answer: string;
+  created_at: string;
+}
+
 // 获取对话历史请求参数
 export interface ChatHistoryRequest {
   catId: string;
@@ -26,7 +34,7 @@ export interface ChatHistoryRequest {
 
 // 获取对话历史响应
 export interface ChatHistoryResponse {
-  list: ChatWithAIResponse[];
+  list: ChatHistoryEntry[];
   total: number;
   page: number;
   pageSize: number;

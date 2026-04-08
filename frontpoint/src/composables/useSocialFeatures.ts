@@ -4,16 +4,22 @@ import { ref, computed } from 'vue';
 import type { 
   SocialDynamic, 
   PublishDynamicRequest, 
-  CommentRequest
+  CommentRequest,
+  CommentResponse
 } from '@/types/social';
 import { 
   publishDynamic, 
   getDynamicsList, 
+  getFollowingDynamicsList,
   getDynamicDetail, 
   likeDynamic, 
   unlikeDynamic, 
+  toggleFavoriteDynamic,
+  toggleFollowUser,
+  toggleCommentLike,
   postComment, 
   deleteComment,
+  deleteDynamic,
   getMyDynamicsList 
 } from '@/api/social';
 
@@ -53,12 +59,14 @@ export function useSocialFeatures() {
   /**
    * 获取广场动态列表
    */
-  const fetchDynamicsList = async (params: { page: number; pageSize: number; catId?: string }) => {
+  const fetchDynamicsList = async (params: { page: number; pageSize: number; catId?: string; scope?: 'all' | 'following' }) => {
     loading.value = true;
     error.value = null;
 
     try {
-      const response = await getDynamicsList(params);
+      const response = params.scope === 'following'
+        ? await getFollowingDynamicsList(params)
+        : await getDynamicsList(params);
       dynamics.value = response.data.list || [];
       return response.data;
     } catch (err: any) {
@@ -68,6 +76,10 @@ export function useSocialFeatures() {
     } finally {
       loading.value = false;
     }
+  };
+
+  const fetchFollowingDynamicsList = async (params: { page: number; pageSize: number; catId?: string }) => {
+    return fetchDynamicsList({ ...params, scope: 'following' });
   };
 
   /**
@@ -161,6 +173,49 @@ export function useSocialFeatures() {
     }
   };
 
+  const toggleFavoriteADynamic = async (dynamicId: string) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await toggleFavoriteDynamic(dynamicId);
+      const dynamicIndex = dynamics.value.findIndex(d => d.id === dynamicId);
+      if (dynamicIndex !== -1) {
+        const currentDynamic = dynamics.value[dynamicIndex]!;
+        currentDynamic.isFavorited = response.data.isFavorited;
+        currentDynamic.favoriteCount = response.data.favoriteCount;
+      }
+      return response.data;
+    } catch (err: any) {
+      error.value = err.message || '收藏动态失败';
+      console.error('收藏动态失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const toggleFollowAUser = async (userId: string) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await toggleFollowUser(userId);
+      dynamics.value.forEach((dynamic) => {
+        if (dynamic.userId === userId) {
+          dynamic.isFollowing = response.data.isFollowing;
+        }
+      });
+      return response.data;
+    } catch (err: any) {
+      error.value = err.message || '关注用户失败';
+      console.error('关注用户失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
   /**
    * 发表评论
    */
@@ -174,6 +229,22 @@ export function useSocialFeatures() {
     } catch (err: any) {
       error.value = err.message || '发表评论失败';
       console.error('发表评论失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
+  const toggleCommentLikeById = async (commentId: string) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await toggleCommentLike(commentId);
+      return response.data;
+    } catch (err: any) {
+      error.value = err.message || '评论点赞失败';
+      console.error('评论点赞失败:', err);
       throw err;
     } finally {
       loading.value = false;
@@ -199,6 +270,23 @@ export function useSocialFeatures() {
     }
   };
 
+  const removeDynamic = async (dynamicId: string) => {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const response = await deleteDynamic(dynamicId);
+      dynamics.value = dynamics.value.filter((item) => item.id !== dynamicId);
+      return response.data;
+    } catch (err: any) {
+      error.value = err.message || '删除动态失败';
+      console.error('删除动态失败:', err);
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  };
+
   /**
    * 获取当前动态列表
    */
@@ -218,12 +306,17 @@ export function useSocialFeatures() {
     // Methods
     publishNewDynamic,
     fetchDynamicsList,
+    fetchFollowingDynamicsList,
     fetchMyDynamicsList,
     fetchDynamicDetail,
     likeADynamic,
     unlikeADynamic,
+    toggleFavoriteADynamic,
+    toggleFollowAUser,
     postNewComment,
+    toggleCommentLikeById,
     removeComment,
+    removeDynamic,
 
     // Getters
     getCurrentDynamics,

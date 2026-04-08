@@ -1,87 +1,98 @@
 <template>
-  <div class="px-6 pt-10 pb-10">
-    <van-nav-bar title="加入猫村" left-arrow @click-left="router.back()" />
-
-    <header class="mt-6 text-center">
-      <div class="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-primary-container text-on-primary shadow-cta">
-        <span class="text-2xl">🐾</span>
-      </div>
-      <p class="mt-3 text-sm text-on-surface-variant">
-        已有账号？
-        <router-link class="font-semibold text-primary" to="/login">去登录</router-link>
-      </p>
+  <div class="min-h-[100dvh] bg-[#f4f5fb] pb-8">
+    <header class="flex items-center px-5 py-4">
+      <button type="button" class="grid h-9 w-9 place-items-center text-[#7f746f]" @click="router.back()">
+        <van-icon name="arrow-left" size="20" />
+      </button>
     </header>
 
-    <van-form class="mt-8" @submit="onSubmit">
-      <van-cell-group inset>
-        <van-field
-          v-model="phone"
-          name="phone"
-          type="tel"
-          label="手机号"
-          placeholder="请输入手机号"
-          autocomplete="tel"
-          :rules="[
-            { required: true, message: '请输入手机号' },
-            { validator: validatePhone, message: '手机号格式不正确' }
-          ]"
-        />
+    <div class="px-7 pt-2">
+      <h1 class="text-[48px] font-black tracking-tight text-[#12182a]">注册账号</h1>
+      <p class="mt-2 text-[16px] leading-7 text-[#5f4f48]">欢迎加入 Mao Village，开启你的猫友社区之旅</p>
 
-        <van-field
-          v-model="code"
-          name="code"
-          label="验证码"
-          placeholder="输入验证码"
-          :rules="[{ required: true, message: '请输入验证码' }]"
-        >
-          <template #button>
-            <van-button
-              size="small"
-              native-type="button"
-              :disabled="codeCooldown > 0 || !phone"
-              type="primary"
+      <van-form class="mt-10 space-y-6" @submit="onSubmit">
+        <div>
+          <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">手机号</div>
+          <div class="flex h-16 items-center rounded-2xl bg-[#e6e9fa] px-4">
+            <van-icon name="idcard" class="text-[#876e63]" />
+            <input
+              v-model="phone"
+              type="tel"
+              maxlength="11"
+              class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+              placeholder="请输入手机号"
+            />
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">验证码</div>
+          <div class="flex items-center gap-3">
+            <div class="flex h-16 flex-1 items-center rounded-2xl bg-[#e6e9fa] px-4">
+              <van-icon name="shield-o" class="text-[#876e63]" />
+              <input
+                v-model="code"
+                type="text"
+                maxlength="6"
+                class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+                placeholder="六位验证码"
+              />
+            </div>
+            <button
+              type="button"
+              class="h-16 rounded-2xl bg-[#d9deef] px-5 text-[20px] font-bold text-[#5f4f48] disabled:opacity-60"
+              :disabled="codeCooldown > 0 || !validatePhone(phone)"
               @click="onSendCode"
             >
-              {{ codeCooldown > 0 ? `${codeCooldown}s后重试` : '获取验证码' }}
-            </van-button>
-          </template>
-        </van-field>
+              {{ codeCooldown > 0 ? `${codeCooldown}s` : '获取验证码' }}
+            </button>
+          </div>
+        </div>
 
-        <van-field
-          v-model="password"
-          name="password"
-          :type="showPassword ? 'text' : 'password'"
-          label="设置密码"
-          placeholder="6-16位字母、数字组合"
-          autocomplete="new-password"
-          :rules="[
-            { required: true, message: '请输入密码' },
-            { validator: validatePassword, message: '密码需为6-16位字母或数字组合' }
-          ]"
-          @click-right-icon="togglePassword"
+        <div>
+          <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">设置密码</div>
+          <div class="flex h-16 items-center rounded-2xl bg-[#e6e9fa] px-4">
+            <van-icon name="lock" class="text-[#876e63]" />
+            <input
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+              placeholder="请输入密码"
+              autocomplete="new-password"
+            />
+            <button type="button" class="text-[#876e63]" @click="togglePassword">
+              <van-icon :name="showPassword ? 'eye-o' : 'closed-eye'" size="20" />
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">确认密码</div>
+          <div class="flex h-16 items-center rounded-2xl bg-[#e6e9fa] px-4">
+            <van-icon name="replay" class="text-[#876e63]" />
+            <input
+              v-model="confirmPassword"
+              :type="showPassword ? 'text' : 'password'"
+              class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+              placeholder="请再次输入密码"
+              autocomplete="new-password"
+            />
+          </div>
+        </div>
+
+        <label class="mt-1 flex items-center gap-2 text-[13px] text-[#7f746f]">
+          <input v-model="agree" type="checkbox" class="h-4 w-4 accent-[#ff6b35]" />
+          我已阅读并同意用户协议与隐私政策
+        </label>
+
+        <button
+          type="submit"
+          class="mt-3 h-[66px] w-full rounded-2xl bg-gradient-to-r from-[#b83a00] to-[#ff6b35] text-[34px] font-bold text-white shadow-[0_10px_22px_rgba(255,107,53,0.26)] active:scale-[0.99]"
         >
-          <template #right-icon>
-            <van-icon :name="showPassword ? 'eye-o' : 'closed-eye'" />
-          </template>
-        </van-field>
-      </van-cell-group>
-
-      <div class="mt-5 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-        <van-checkbox v-model="agree" icon-size="18px">
-          <span class="text-sm text-on-surface-variant">阅读并同意</span>
-          <span class="mx-1 text-sm font-semibold text-primary" @click.stop="onViewTerms">《用户服务协议》</span>
-          <span class="text-sm text-on-surface-variant">与</span>
-          <span class="ml-1 text-sm font-semibold text-primary" @click.stop="onViewPrivacy">《隐私政策》</span>
-        </van-checkbox>
-      </div>
-
-      <button
-        type="submit"
-        class="mt-6 h-12 w-full rounded-xl bg-primary text-on-primary font-semibold shadow-cta active:scale-[0.99]"
-      >
-        立即注册
-      </button>
-    </van-form>
+          立即注册
+        </button>
+      </van-form>
+    </div>
   </div>
 </template>
 
@@ -96,6 +107,7 @@ const router = useRouter();
 const phone = ref('');
 const code = ref('');
 const password = ref('');
+const confirmPassword = ref('');
 const agree = ref(false);
 const showPassword = ref(false);
 const codeCooldown = ref(0);
@@ -146,6 +158,22 @@ const onViewPrivacy = () => {
 const onSubmit = async () => {
   if (!agree.value) {
     showToast({ type: 'fail', message: '请先阅读并同意协议' });
+    return;
+  }
+  if (!validatePhone(phone.value)) {
+    showToast({ type: 'fail', message: '手机号格式不正确' });
+    return;
+  }
+  if (!code.value.trim()) {
+    showToast({ type: 'fail', message: '请输入验证码' });
+    return;
+  }
+  if (!validatePassword(password.value)) {
+    showToast({ type: 'fail', message: '密码需为6-16位字母或数字组合' });
+    return;
+  }
+  if (password.value !== confirmPassword.value) {
+    showToast({ type: 'fail', message: '两次输入密码不一致' });
     return;
   }
 

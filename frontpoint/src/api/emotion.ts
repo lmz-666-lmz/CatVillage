@@ -15,6 +15,8 @@ type BackendEmotionRecord = {
   label: string;
   confidence: number | null;
   record_time: string;
+  emotion_description?: string | null;
+  audio_url?: string | null;
 };
 
 type BackendRecordsResponse = {
@@ -53,10 +55,10 @@ const toEmotionRecord = (item: BackendEmotionRecord): EmotionRecordResponse => (
   id: String(item.id),
   catId: item.pet_id,
   userId: '',
-  audioUrl: '',
+  audioUrl: item.audio_url || '',
   emotionTag: item.label,
   confidence: item.confidence ?? 0,
-  emotionDescription: '',
+  emotionDescription: item.emotion_description || '',
   createdAt: item.record_time
 });
 

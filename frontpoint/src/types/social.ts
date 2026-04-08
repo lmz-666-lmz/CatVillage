@@ -19,9 +19,13 @@ export interface DynamicResponse {
   images?: string[];
   likeCount: number;
   commentCount: number;
+  favoriteCount?: number;
   createdAt: string;
   isLiked?: boolean;
+  isFavorited?: boolean;
+  isFollowing?: boolean;
   isOwner: boolean; // 是否是自己的动态
+  comments?: CommentResponse[];
 }
 
 // 动态列表请求参数
@@ -55,6 +59,8 @@ export interface CommentResponse {
   dynamicId: string;
   content: string;
   createdAt: string;
+  likeCount?: number;
+  isLiked?: boolean;
   isOwner: boolean; // 是否是自己的评论
 }
 
@@ -67,6 +73,16 @@ export interface LikeRequest {
 export interface LikeResponse {
   isLiked: boolean;
   likeCount: number;
+}
+
+export interface FavoriteResponse {
+  isFavorited: boolean;
+  favoriteCount: number;
+}
+
+export interface FollowResponse {
+  isFollowing: boolean;
+  followerCount: number;
 }
 
 // 我的动态列表请求参数
@@ -82,6 +98,15 @@ export interface MyDynamicsListResponse {
   total: number;
   page: number;
   pageSize: number;
+}
+
+export interface HotTopicItem {
+  topic: string;
+  count: number;
+}
+
+export interface HotTopicsResponse {
+  list: HotTopicItem[];
 }
 
 // Backward-compatible aliases for older API/composable names.

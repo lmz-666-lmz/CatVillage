@@ -75,6 +75,15 @@ export function getConversationMessages(targetUserId: string, params: { page: nu
   });
 }
 
+// 获取粉丝列表
+export function getFollowerList(params: { page: number; pageSize: number }) {
+  return request<FriendListResponse>({
+    url: '/social/users/followers/list',
+    method: 'get',
+    params
+  });
+}
+
 // 删除会话
 export function deleteConversation(targetUserId: string) {
   return request<DeleteConversationResponse>({

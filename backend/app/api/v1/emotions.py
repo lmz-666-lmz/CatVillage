@@ -1,10 +1,11 @@
 import os
-import tempfile
 import json
+from uuid import uuid4
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -16,6 +17,10 @@ from app.models.user import User
 from app.schemas.emotions import EmotionRecordResponse, WarningStatusPayload
 
 router = APIRouter(prefix="/api/v1/emotions", tags=["Emotions"])
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+AUDIO_STORAGE_DIR = os.path.join(PROJECT_ROOT, "storage", "emotion_audio")
+os.makedirs(AUDIO_STORAGE_DIR, exist_ok=True)
 
 
 def _ensure_pet_owner(db: Session, pet_id: str, user_id: str) -> None:
@@ -29,6 +34,49 @@ def _parse_iso_datetime(value: str) -> datetime:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed
+
+
+def _build_record_response(record: EmotionRecord) -> dict:
+    raw = {}
+    if record.raw_result:
+        try:
+            raw = json.loads(record.raw_result)
+        except json.JSONDecodeError:
+            raw = {}
+
+    translation = raw.get("translation") if isinstance(raw, dict) else None
+    emotion_description = None
+    if isinstance(translation, dict):
+        emotion_description = translation.get("human") or translation.get("science")
+
+    audio_path = raw.get("_audio_path") if isinstance(raw, dict) else None
+    audio_url = f"/api/v1/emotions/records/{record.id}/audio" if isinstance(audio_path, str) and audio_path else None
+
+    return {
+        "id": record.id,
+        "pet_id": record.pet_id,
+        "label": record.label,
+        "confidence": record.confidence,
+        "record_time": record.record_time,
+        "emotion_description": emotion_description,
+        "audio_url": audio_url,
+    }
+
+
+def _get_record_audio_path(record: EmotionRecord) -> str | None:
+    if not record.raw_result:
+        return None
+    try:
+        raw = json.loads(record.raw_result)
+    except json.JSONDecodeError:
+        return None
+
+    audio_path = raw.get("_audio_path") if isinstance(raw, dict) else None
+    if not isinstance(audio_path, str) or not audio_path:
+        return None
+    if not os.path.isfile(audio_path):
+        return None
+    return audio_path
 
 
 @router.post("/recognize")
@@ -45,17 +93,18 @@ async def recognize_cat_emotion(
         raise HTTPException(status_code=400, detail="unsupported audio format")
     
     _, ext = os.path.splitext(file.filename.lower())
-    temp_path = None
+    audio_disk_path = os.path.join(AUDIO_STORAGE_DIR, f"{uuid4().hex}{ext or '.wav'}")
     
     try:
-        # 将前端传来的声音存为临时文件
-        with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as temp_file:
-            content = await file.read()
-            temp_file.write(content)
-            temp_path = temp_file.name
+        content = await file.read()
+        with open(audio_disk_path, "wb") as audio_file:
+            audio_file.write(content)
 
         # 调用你的核心算法！
-        result = analyze_audio(temp_path)
+        result = analyze_audio(audio_disk_path)
+        if not isinstance(result, dict):
+            result = {"label": "未知", "confidence": 0}
+        result["_audio_path"] = audio_disk_path
 
         record = EmotionRecord(
             pet_id=pet_id,
@@ -71,15 +120,14 @@ async def recognize_cat_emotion(
         response_payload = dict(result)
         response_payload["record_id"] = record.id
         response_payload["pet_id"] = pet_id
+        response_payload["audio_url"] = f"/api/v1/emotions/records/{record.id}/audio"
 
         return {"code": 200, "msg": "success", "data": response_payload}
         
     except Exception as e:
+        if os.path.isfile(audio_disk_path):
+            os.remove(audio_disk_path)
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        # 识别完必须删掉临时文件，防止服务器撑爆
-        if temp_path and os.path.exists(temp_path):
-            os.remove(temp_path)
 
 
 @router.get("/records/list")
@@ -104,7 +152,7 @@ def list_emotion_records(
         "msg": "success",
         "data": {
             "total": total,
-            "list": [EmotionRecordResponse.model_validate(item).model_dump() for item in records],
+            "list": [EmotionRecordResponse.model_validate(_build_record_response(item)).model_dump() for item in records],
         },
     }
 
@@ -126,8 +174,29 @@ def get_emotion_record_detail(
     return {
         "code": 200,
         "msg": "success",
-        "data": EmotionRecordResponse.model_validate(record).model_dump(),
+        "data": EmotionRecordResponse.model_validate(_build_record_response(record)).model_dump(),
     }
+
+
+@router.get("/records/{record_id}/audio")
+def stream_emotion_record_audio(
+    record_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    record = (
+        db.query(EmotionRecord)
+        .filter(EmotionRecord.id == record_id, EmotionRecord.user_id == current_user.id)
+        .first()
+    )
+    if record is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emotion record not found")
+
+    audio_path = _get_record_audio_path(record)
+    if not audio_path:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Audio file not found")
+
+    return FileResponse(audio_path)
 
 
 @router.get("/statistics")

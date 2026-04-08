@@ -1,5 +1,5 @@
 <template>
-  <div class="px-6 pt-6 pb-6">
+  <div class="relative min-h-[100dvh] bg-[#f4f5fb] px-4 pt-3 pb-28">
     <div v-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
       <div class="text-base font-semibold text-on-background">广场加载失败</div>
       <div class="mt-2">{{ error }}</div>
@@ -7,45 +7,38 @@
     </div>
 
     <div v-else>
-    <header class="flex items-center justify-between">
-      <div>
-        <h1 class="text-xl font-semibold tracking-tight text-on-background">广场</h1>
-        <p class="mt-1 text-sm text-on-surface-variant">和大家分享猫咪日常</p>
+    <header class="sticky top-0 z-20 -mx-4 flex min-h-[54px] items-center justify-between bg-[#f4f5fb]/95 px-4 py-2.5 backdrop-blur-md">
+      <div class="flex items-center gap-4">
+        <h1 class="text-[23px] font-black tracking-tight text-[#FF6B35]">猫村</h1>
+        <div class="flex gap-5 text-[20px] font-black">
+          <button
+            type="button"
+            class="relative pb-1"
+            :class="activeTab === 'follow' ? 'text-[#FF6B35]' : 'text-on-surface'"
+            @click="activeTab = 'follow'"
+          >
+            关注
+            <span v-if="activeTab === 'follow'" class="absolute bottom-0 left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#FF6B35]"></span>
+          </button>
+          <button
+            type="button"
+            class="relative pb-1"
+            :class="activeTab === 'recommend' ? 'text-[#FF6B35]' : 'text-on-surface'"
+            @click="activeTab = 'recommend'"
+          >
+            发现
+            <span v-if="activeTab === 'recommend'" class="absolute bottom-0 left-1/2 h-[2px] w-4 -translate-x-1/2 rounded-full bg-[#FF6B35]"></span>
+          </button>
+        </div>
       </div>
       <div class="flex items-center gap-2">
-        <van-button size="small" plain type="primary" @click="refresh">刷新</van-button>
-        <van-button size="small" type="primary" @click="router.push({ name: 'CreatePost' })">发布</van-button>
+        <button type="button" class="grid h-10 w-10 place-items-center rounded-full text-[#11192a]" @click="router.push({ name: 'SocialSearch' })">
+          <van-icon name="search" size="22" />
+        </button>
       </div>
     </header>
 
-    <div class="mt-5 grid grid-cols-3 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-1">
-      <button
-        type="button"
-        class="h-9 rounded-xl text-sm font-semibold"
-        :class="activeTab === 'follow' ? 'bg-primary text-on-primary shadow-cta' : 'text-on-surface-variant'"
-        @click="activeTab = 'follow'"
-      >
-        关注
-      </button>
-      <button
-        type="button"
-        class="h-9 rounded-xl text-sm font-semibold"
-        :class="activeTab === 'recommend' ? 'bg-primary text-on-primary shadow-cta' : 'text-on-surface-variant'"
-        @click="activeTab = 'recommend'"
-      >
-        推荐
-      </button>
-      <button
-        type="button"
-        class="h-9 rounded-xl text-sm font-semibold"
-        :class="activeTab === 'city' ? 'bg-primary text-on-primary shadow-cta' : 'text-on-surface-variant'"
-        @click="activeTab = 'city'"
-      >
-        同城
-      </button>
-    </div>
-
-    <section class="mt-6">
+    <section class="mt-2.5 space-y-4">
       <div v-if="loading" class="py-10 text-center">
         <van-loading size="24" />
         <div class="mt-3 text-sm text-on-surface-variant">正在加载动态...</div>
@@ -61,57 +54,107 @@
         <article
           v-for="item in dynamics"
           :key="item.id"
-          class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4"
+          class="overflow-hidden rounded-[18px] border border-[#e6e8f2] bg-white shadow-[0_4px_12px_rgba(20,27,43,0.05)]"
+          @click="openDetail(item.id)"
         >
-          <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center justify-between gap-3 px-3.5 pt-3.5">
             <div class="flex items-center gap-3 min-w-0">
-              <van-image :src="item.avatar" fit="cover" width="44" height="44" round />
+              <div class="relative">
+                <van-image :src="item.avatar || defaultAvatar" fit="cover" width="52" height="52" round />
+                <button
+                  type="button"
+                  class="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[#ff6b35] text-white"
+                  @click.stop
+                >
+                  <van-icon name="plus" size="10" />
+                </button>
+              </div>
               <div class="min-w-0">
-                <div class="truncate text-sm font-semibold text-on-background">{{ item.username }}</div>
-                <div class="mt-0.5 text-xs text-on-surface-variant">{{ formatRelativeTime(item.createdAt) }}</div>
+                <div class="truncate text-[18px] font-black text-[#11192a]">{{ item.username || '橘猫派大星' }}</div>
+                <div class="mt-0.5 text-[12px] text-[#6b5950]">{{ formatRelativeTime(item.createdAt) }} · {{ randomLocation(item.id) }}</div>
               </div>
             </div>
-            <van-tag v-if="item.catName" plain type="primary">{{ item.catName }}</van-tag>
+            <button type="button" class="text-[#11192a]">
+              <van-icon name="ellipsis" size="20" />
+            </button>
           </div>
 
-          <p class="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-on-background">{{ item.content }}</p>
+          <p class="mt-3 px-3.5 whitespace-pre-wrap text-[15px] leading-relaxed text-[#11192a]">{{ item.content }}</p>
 
-          <div v-if="item.images && item.images.length" class="mt-3 grid grid-cols-3 gap-2">
+          <div v-if="item.images && item.images.length" class="mt-3 grid grid-cols-2 gap-2 px-3.5 pb-2.5" :class="item.images.length === 1 ? 'grid-cols-1' : 'grid-cols-2'">
             <van-image
               v-for="(img, idx) in item.images"
               :key="idx"
               :src="img"
               fit="cover"
               width="100%"
-              height="88"
-              radius="12"
+              :height="item.images.length === 1 ? '260' : '150'"
+              radius="16"
             />
           </div>
 
-          <div class="mt-4 flex items-center justify-between gap-3 text-sm">
-            <button
-              type="button"
-              class="flex items-center gap-2 text-on-surface-variant"
-              :disabled="likingId === item.id"
-              @click="toggleLike(item)"
-            >
-              <van-icon :name="item.isLiked ? 'like' : 'like-o'" />
-              <span>{{ item.likeCount || 0 }}</span>
-            </button>
-            <div class="flex items-center gap-2 text-on-surface-variant">
-              <van-icon name="comment-o" />
-              <span>{{ item.commentCount || 0 }}</span>
+          <div class="mt-1 flex items-center justify-between px-4 py-3 text-sm">
+            <div class="flex items-center gap-6">
+              <button
+                type="button"
+                class="flex items-center gap-2 text-[#2f2521]"
+                :disabled="likingId === item.id"
+                @click.stop="toggleLike(item)"
+              >
+                <van-icon :name="item.isLiked ? 'like' : 'like-o'" size="20" />
+                <span class="text-[15px]">{{ formatSocialCount(item.likeCount) }}</span>
+              </button>
+
+              <button
+                type="button"
+                class="flex items-center gap-2 text-[#2f2521]"
+                :disabled="favoriteId === item.id"
+                @click.stop="toggleFavorite(item)"
+              >
+                <van-icon :name="item.isFavorited ? 'star' : 'star-o'" size="20" :class="item.isFavorited ? 'text-[#ff6b35]' : ''" />
+                <span class="text-[15px]">{{ formatSocialCount(item.favoriteCount) }}</span>
+              </button>
+
+              <div class="flex items-center gap-2 text-[#2f2521]">
+                <van-icon name="chat-o" size="20" />
+                <span class="text-[15px]">{{ item.commentCount || 0 }}</span>
+              </div>
+            </div>
+
+            <div v-if="item.catName" class="truncate text-[14px] text-[#2f2521] max-w-[120px]">
+              🎵 {{ item.catName }}...
             </div>
           </div>
         </article>
+
+        <div class="py-2 text-center">
+          <button
+            v-if="hasMore && !loading"
+            type="button"
+            class="h-10 rounded-[10px] border border-[#dfe3f0] bg-white px-4 text-[14px] font-semibold text-[#5c5552]"
+            :disabled="loadingMore"
+            @click="loadMore"
+          >
+            {{ loadingMore ? '加载中...' : '加载更多' }}
+          </button>
+          <div v-else-if="!hasMore && dynamics.length > 0" class="text-[13px] text-[#9a97a0]">没有更多了</div>
+        </div>
       </div>
     </section>
+
+    <button
+      type="button"
+      class="fixed bottom-24 left-1/2 z-30 grid h-16 w-16 -translate-x-1/2 place-items-center rounded-full bg-[#ff1f10] text-white shadow-[0_10px_22px_rgba(255,31,16,0.35)]"
+      @click="router.push({ name: 'CreatePost' })"
+    >
+      <van-icon name="plus" size="34" />
+    </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
@@ -119,14 +162,37 @@ import { formatRelativeTime } from '@/utils/date';
 import type { SocialDynamic } from '@/types/social';
 
 const router = useRouter();
-const activeTab = ref<'follow' | 'recommend' | 'city'>('recommend');
+const activeTab = ref<'follow' | 'recommend'>('recommend');
 
-const { fetchDynamicsList, likeADynamic, unlikeADynamic, getCurrentDynamics } = useSocialFeatures();
+const { fetchDynamicsList, likeADynamic, unlikeADynamic, toggleFavoriteADynamic } = useSocialFeatures();
 
 const loading = ref(false);
 const likingId = ref<string>('');
+const favoriteId = ref<string>('');
+const loadingMore = ref(false);
 const error = ref<string | null>(null);
-const dynamics = computed(() => getCurrentDynamics.value);
+const dynamics = ref<SocialDynamic[]>([]);
+const currentPage = ref(1);
+const pageSize = 8;
+const hasMore = ref(true);
+const defaultAvatar = 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg';
+
+const randomLocation = (seed: string) => {
+  const locations = ['上海·滨江公园', '杭州', '成都', '北京', '深圳', '重庆'];
+  const idx = seed.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % locations.length;
+  return locations[idx] || '猫村';
+};
+
+const formatSocialCount = (value?: number) => {
+  const num = value || 0;
+  if (num >= 10000) {
+    return `${(num / 10000).toFixed(1)}w`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}k`;
+  }
+  return String(num);
+};
 
 const refresh = async () => {
   if (loading.value) {
@@ -135,7 +201,10 @@ const refresh = async () => {
   loading.value = true;
   error.value = null;
   try {
-    await fetchDynamicsList({ page: 1, pageSize: 20 });
+    const res = await fetchDynamicsList({ page: 1, pageSize, scope: activeTab.value === 'follow' ? 'following' : 'all' });
+    dynamics.value = res.list || [];
+    currentPage.value = 1;
+    hasMore.value = dynamics.value.length < (res.total || 0);
   } catch (err: unknown) {
     const status = typeof err === 'object' && err !== null && 'response' in err
       ? (err as { response?: { status?: number } }).response?.status
@@ -148,7 +217,30 @@ const refresh = async () => {
   }
 };
 
+const loadMore = async () => {
+  if (loadingMore.value || loading.value || !hasMore.value) {
+    return;
+  }
+  loadingMore.value = true;
+  try {
+    const nextPage = currentPage.value + 1;
+    const res = await fetchDynamicsList({ page: nextPage, pageSize, scope: activeTab.value === 'follow' ? 'following' : 'all' });
+    const list = res.list || [];
+    dynamics.value = [...dynamics.value, ...list];
+    currentPage.value = nextPage;
+    hasMore.value = dynamics.value.length < (res.total || 0);
+  } catch {
+    showToast({ type: 'fail', message: '加载更多失败，请稍后重试' });
+  } finally {
+    loadingMore.value = false;
+  }
+};
+
 const reload = () => refresh();
+
+const openDetail = (id: string) => {
+  router.push({ name: 'SocialDetail', params: { id } });
+};
 
 const toggleLike = async (dynamic: SocialDynamic) => {
   if (likingId.value) {
@@ -158,9 +250,13 @@ const toggleLike = async (dynamic: SocialDynamic) => {
   try {
     if (dynamic.isLiked) {
       await unlikeADynamic(dynamic.id);
+      dynamic.isLiked = false;
+      dynamic.likeCount = Math.max(0, (dynamic.likeCount || 0) - 1);
       return;
     }
     await likeADynamic(dynamic.id);
+    dynamic.isLiked = true;
+    dynamic.likeCount = (dynamic.likeCount || 0) + 1;
   } catch {
     showToast({ type: 'fail', message: '操作失败，请稍后重试' });
   } finally {
@@ -168,5 +264,26 @@ const toggleLike = async (dynamic: SocialDynamic) => {
   }
 };
 
+const toggleFavorite = async (dynamic: SocialDynamic) => {
+  if (favoriteId.value) {
+    return;
+  }
+
+  favoriteId.value = dynamic.id;
+  try {
+    const response = await toggleFavoriteADynamic(dynamic.id);
+    dynamic.isFavorited = response.isFavorited;
+    dynamic.favoriteCount = response.favoriteCount;
+  } catch {
+    showToast({ type: 'fail', message: '收藏失败，请稍后重试' });
+  } finally {
+    favoriteId.value = '';
+  }
+};
+
 onMounted(refresh);
+
+watch(activeTab, () => {
+  void refresh();
+});
 </script>

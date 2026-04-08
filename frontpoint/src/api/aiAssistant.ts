@@ -3,6 +3,7 @@ import type {
   ChatWithAIRequest,
   ChatWithAIResponse,
   ChatHistoryRequest,
+  ChatHistoryEntry,
   ChatHistoryResponse,
   ClearSessionResponse,
   EmergencyHelpRequest,
@@ -20,13 +21,7 @@ type BackendChatResponse = {
   };
 };
 
-type BackendHistoryItem = {
-  id: number;
-  pet_id: string;
-  question: string;
-  answer: string;
-  created_at: string;
-};
+type BackendHistoryItem = ChatHistoryEntry;
 
 type BackendHistoryResponse = {
   total: number;
@@ -39,14 +34,6 @@ const toChatMessage = (data: BackendChatResponse): ChatWithAIResponse => ({
   message: data.reply,
   role: 'assistant',
   timestamp: new Date().toISOString()
-});
-
-const toHistoryMessage = (item: BackendHistoryItem): ChatWithAIResponse => ({
-  id: String(item.id),
-  sessionId: item.pet_id,
-  message: item.answer,
-  role: 'assistant',
-  timestamp: item.created_at
 });
 
 // 发起对话提问
@@ -82,7 +69,7 @@ export function getChatHistory(params: ChatHistoryRequest): Promise<ApiResponse<
   }).then((response) => ({
     ...response,
     data: {
-      list: response.data.list.map(toHistoryMessage),
+      list: response.data.list,
       total: response.data.total,
       page: params.page,
       pageSize: params.pageSize

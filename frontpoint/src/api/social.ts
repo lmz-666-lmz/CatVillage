@@ -3,8 +3,11 @@ import type {
   SocialDynamicListResponse,
   SocialDynamicResponse,
   LikeDynamicResponse,
+  FavoriteResponse,
+  FollowResponse,
   CommentRequest,
-  CommentResponse
+  CommentResponse,
+  HotTopicsResponse
 } from '@/types/social';
 
 // 发布动态
@@ -23,6 +26,18 @@ export function getDynamicsList(params: { page: number; pageSize: number; catId?
     url: '/social/dynamics/list',
     method: 'get',
     params
+  });
+}
+
+// 获取关注流动态列表
+export function getFollowingDynamicsList(params: { page: number; pageSize: number; catId?: string }) {
+  return request<SocialDynamicListResponse>({
+    url: '/social/dynamics/list',
+    method: 'get',
+    params: {
+      ...params,
+      scope: 'following'
+    }
   });
 }
 
@@ -47,6 +62,30 @@ export function unlikeDynamic(dynamicId: string) {
   return request({
     url: `/social/dynamics/${dynamicId}/like`,
     method: 'delete'
+  });
+}
+
+// 收藏动态
+export function toggleFavoriteDynamic(dynamicId: string) {
+  return request<FavoriteResponse>({
+    url: `/social/dynamics/${dynamicId}/favorite`,
+    method: 'post'
+  });
+}
+
+// 关注/取消关注用户
+export function toggleFollowUser(userId: string) {
+  return request<FollowResponse>({
+    url: `/social/users/${userId}/follow`,
+    method: 'post'
+  });
+}
+
+// 评论点赞/取消点赞
+export function toggleCommentLike(commentId: string) {
+  return request<LikeDynamicResponse>({
+    url: `/social/comments/${commentId}/like`,
+    method: 'post'
   });
 }
 
@@ -79,6 +118,15 @@ export function deleteDynamic(dynamicId: string) {
 export function getMyDynamicsList(params: { page: number; pageSize: number; catId?: string }) {
   return request<SocialDynamicListResponse>({
     url: '/social/dynamics/my/list',
+    method: 'get',
+    params
+  });
+}
+
+// 获取热门话题
+export function getHotTopics(params?: { limit?: number; sampleSize?: number }) {
+  return request<HotTopicsResponse>({
+    url: '/social/topics/hot',
     method: 'get',
     params
   });

@@ -1,5 +1,5 @@
 <template>
-  <div class="px-6 pt-6 pb-6">
+  <div class="bg-background px-6 pt-6 pb-8">
     <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
       <van-loading size="20" />
       <div class="mt-3">正在加载情绪识别页面...</div>
@@ -14,7 +14,7 @@
     <div v-else>
     <header class="flex items-center justify-between">
       <div>
-        <h1 class="text-xl font-semibold tracking-tight text-on-background">情绪识别</h1>
+        <h1 class="text-xl font-semibold tracking-tight text-on-background">异常预警</h1>
         <p class="mt-1 text-sm text-on-surface-variant">{{ selectedCatName }}</p>
       </div>
       <van-button size="small" plain type="primary" :disabled="!hasCats" @click="refresh">刷新</van-button>
@@ -28,8 +28,21 @@
     </section>
 
     <section v-else class="mt-6 space-y-4">
+      <div class="rounded-2xl bg-gradient-to-br from-[#ab3500] to-[#ff6b35] p-5 text-white shadow-[0_12px_40px_rgba(171,53,0,0.15)]">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <h2 class="text-2xl font-extrabold tracking-tight">异常预警</h2>
+            <p class="mt-1 text-sm text-white/80">预警发布：今日</p>
+          </div>
+          <div class="rounded-xl bg-white/20 p-2 backdrop-blur-md">
+            <van-icon name="warning-o" size="24" color="#fff" />
+          </div>
+        </div>
+        <div class="mt-4 rounded-lg bg-white/10 px-3 py-2 text-sm font-bold">{{ selectedCatName }}</div>
+      </div>
+
       <div class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-        <div class="text-sm font-semibold text-on-background">上传音频</div>
+        <div class="mb-2 text-sm font-semibold text-on-background">上传音频分析</div>
         <div class="mt-2">
           <van-uploader
             v-model="audioList"
@@ -51,12 +64,40 @@
       </div>
 
       <div class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-        <div class="text-sm font-semibold text-on-background">识别结果</div>
+        <div class="text-sm font-semibold text-on-background">异常说明</div>
         <div v-if="!lastResult" class="mt-2 text-sm text-on-surface-variant">上传音频后点击“开始识别”</div>
         <div v-else class="mt-3 space-y-1">
           <div class="text-base font-semibold text-on-background">{{ lastResult.emotionTag }}</div>
           <div class="text-xs text-on-surface-variant">置信度：{{ (lastResult.confidence * 100).toFixed(1) }}%</div>
           <div class="mt-2 text-sm text-on-background">{{ lastResult.emotionDescription || '暂无描述' }}</div>
+        </div>
+      </div>
+
+      <div class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
+        <div class="mb-3 text-sm font-semibold text-on-background">建议处理方式</div>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between rounded-xl bg-surface-container-low px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="grid h-9 w-9 place-items-center rounded-full bg-secondary-container">
+                <van-icon name="passed" color="#585f6c" />
+              </div>
+              <span class="text-sm font-semibold text-on-background">检查饮水与排泄</span>
+            </div>
+            <van-icon name="arrow" color="#8d7168" />
+          </div>
+
+          <div class="flex items-center justify-between rounded-xl border-l-4 border-primary bg-primary-container/10 px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="grid h-9 w-9 place-items-center rounded-full bg-primary text-white">
+                <van-icon name="service-o" />
+              </div>
+              <div>
+                <div class="text-sm font-bold text-primary">立即咨询兽医</div>
+                <div class="text-[10px] font-bold uppercase tracking-wider text-on-primary-fixed-variant/70">高优先级行动</div>
+              </div>
+            </div>
+            <van-icon name="phone-o" color="#ab3500" />
+          </div>
         </div>
       </div>
 

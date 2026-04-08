@@ -1,4 +1,8 @@
 from uuid import uuid4
+from pathlib import Path
+import base64
+import binascii
+import re
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -18,6 +22,36 @@ from app.schemas.cat_profile import (
 
 router = APIRouter(prefix="/pet-profiles", tags=["pet-profiles"])
 
+UPLOAD_ROOT = Path(__file__).resolve().parents[3] / "uploads"
+CAT_UPLOAD_DIR = UPLOAD_ROOT / "cats"
+CAT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _persist_avatar_if_data_url(avatar_url: str | None) -> str | None:
+    if not avatar_url:
+        return avatar_url
+    if not avatar_url.startswith("data:image/"):
+        return avatar_url
+
+    match = re.match(r"^data:image/([a-zA-Z0-9.+-]+);base64,(.+)$", avatar_url)
+    if not match:
+        return avatar_url
+
+    ext = match.group(1).lower().replace("jpeg", "jpg")
+    payload = match.group(2)
+    if ext not in {"jpg", "png", "gif", "webp", "bmp"}:
+        ext = "jpg"
+
+    try:
+        binary = base64.b64decode(payload, validate=True)
+    except (ValueError, binascii.Error):
+        return avatar_url
+
+    filename = f"{uuid4().hex}.{ext}"
+    target = CAT_UPLOAD_DIR / filename
+    target.write_bytes(binary)
+    return f"/api/v1/uploads/cats/{filename}"
+
 
 def _serialize_cat_profile(cat_profile: CatProfile) -> dict:
     return CatProfileResponse.model_validate(cat_profile).model_dump()
@@ -29,10 +63,13 @@ def create_cat_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    payload_data = payload.model_dump()
+    payload_data["avatar_url"] = _persist_avatar_if_data_url(payload_data.get("avatar_url"))
+
     cat_profile = CatProfile(
         id=str(uuid4()),
         user_id=current_user.id,
-        **payload.model_dump(),
+        **payload_data,
     )
     db.add(cat_profile)
     db.commit()
@@ -98,6 +135,8 @@ def update_cat_profile(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cat profile not found")
 
     update_data = payload.model_dump(exclude_unset=True)
+    if "avatar_url" in update_data:
+        update_data["avatar_url"] = _persist_avatar_if_data_url(update_data.get("avatar_url"))
     for field_name, field_value in update_data.items():
         setattr(cat_profile, field_name, field_value)
 

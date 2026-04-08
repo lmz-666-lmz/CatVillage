@@ -9,6 +9,8 @@ class EmotionRecordResponse(BaseModel):
     label: str
     confidence: float | None = None
     record_time: datetime
+    emotion_description: str | None = None
+    audio_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

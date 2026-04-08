@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -46,7 +46,13 @@ def get_friend_list(
 ):
     query = db.query(User).filter(User.id != current_user.id)
     total = query.count()
-    items = query.offset((page - 1) * pageSize).limit(pageSize).all()
+    # SQL Server requires ORDER BY when OFFSET/LIMIT (FETCH NEXT) is used.
+    items = (
+        query.order_by(User.id.asc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
 
     return {
         "code": 200,
@@ -162,30 +168,39 @@ def get_conversation_list(
         target_id = message.receiver_id if message.sender_id == current_user.id else message.sender_id
         if target_id in conversations:
             continue
-
-        target_user = db.query(User).filter(User.id == target_id).first()
-        unread_count = (
-            db.query(Message)
-            .filter(
-                Message.sender_id == target_id,
-                Message.receiver_id == current_user.id,
-                Message.status != "read",
-            )
-            .count()
-        )
-
         conversations[target_id] = {
             "id": target_id,
             "targetUserId": target_id,
             "targetType": "user",
             "lastMessage": message.content,
             "lastMessageType": message.message_type,
-            "unreadCount": unread_count,
+            "unreadCount": 0,
             "updatedAt": message.sent_at.isoformat() if message.sent_at else "",
             "avatar": "",
-            "nickname": target_user.username if target_user else "",
+            "nickname": "",
             "isOnline": False,
         }
+
+    target_ids = list(conversations.keys())
+    if target_ids:
+        user_rows = db.query(User.id, User.username).filter(User.id.in_(target_ids)).all()
+        user_map = {user_id: username for user_id, username in user_rows}
+
+        unread_rows = (
+            db.query(Message.sender_id, func.count(Message.id))
+            .filter(
+                Message.sender_id.in_(target_ids),
+                Message.receiver_id == current_user.id,
+                Message.status != "read",
+            )
+            .group_by(Message.sender_id)
+            .all()
+        )
+        unread_map = {sender_id: count for sender_id, count in unread_rows}
+
+        for target_id, item in conversations.items():
+            item["nickname"] = user_map.get(target_id, "")
+            item["unreadCount"] = int(unread_map.get(target_id, 0))
 
     conversation_list = list(conversations.values())
     total = len(conversation_list)

@@ -1,5 +1,5 @@
 <template>
-  <div class="px-6 pt-6 pb-6">
+  <div class="min-h-[100dvh] bg-[#f4f5fb] px-5 pt-4 pb-8">
     <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
       <van-loading size="20" />
       <div class="mt-3">正在准备添加猫咪表单...</div>
@@ -12,76 +12,133 @@
     </div>
 
     <div v-else>
-    <van-nav-bar title="添加猫咪" left-arrow @click-left="router.back()" />
+    <header class="sticky top-0 z-20 -mx-5 flex items-center justify-between bg-[#f4f5fb]/95 px-5 py-3 backdrop-blur">
+      <button type="button" class="grid h-10 w-10 place-items-center text-[#837974]" @click="router.back()">
+        <van-icon name="arrow-left" size="20" />
+      </button>
+      <h1 class="text-[20px] font-extrabold tracking-tight text-[#f05d23]">添加猫咪档案</h1>
+      <button type="button" class="grid h-10 w-10 place-items-center text-[#837974]">
+        <van-icon name="bell" size="20" />
+      </button>
+    </header>
 
-    <section class="mt-4 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-      <div class="flex items-center gap-4">
+    <section class="mt-6 text-center">
+      <div class="flex items-center justify-center">
         <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
         <button
           type="button"
-          class="h-16 w-16 overflow-hidden rounded-2xl border border-surface-container-high bg-surface-container-high grid place-items-center"
+          class="relative grid h-[206px] w-[206px] place-items-center overflow-hidden bg-[#ececf3]"
           @click="openAvatarPicker"
         >
-          <img v-if="avatarPreviewUrl" :src="avatarPreviewUrl" class="h-full w-full object-cover" alt="猫咪头像" />
-          <van-icon v-else name="photo-o" size="24" class="text-on-surface-variant" />
-        </button>
+          <div class="relative h-[166px] w-[166px] overflow-hidden rounded-full border-[5px] border-white shadow-sm">
+            <img
+              v-if="avatarPreviewUrl"
+              :src="avatarPreviewUrl"
+              class="h-full w-full object-cover"
+              alt="猫咪头像"
+            />
+            <img
+              v-else
+              src="https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg"
+              class="h-full w-full object-cover opacity-60"
+              alt="猫咪头像"
+            />
+          </div>
 
-        <div class="min-w-0 flex-1">
-          <div class="text-sm font-semibold text-on-background">头像</div>
-          <div class="mt-1 text-xs text-on-surface-variant">点击左侧图片上传</div>
+          <div class="absolute inset-0 grid place-items-center text-white">
+            <div class="grid h-11 w-11 place-items-center rounded-xl bg-black/45">
+              <van-icon name="photo-o" size="23" />
+            </div>
+          </div>
+
+          <div class="absolute bottom-[14px] right-[14px] grid h-[58px] w-[58px] place-items-center rounded-full border-[3px] border-white bg-[#ff6b35] text-white shadow">
+            <van-icon name="edit" size="18" />
+          </div>
+        </button>
+      </div>
+
+      <p class="mt-4 text-[17px] text-[#594139]">点击上传猫咪头像</p>
+    </section>
+
+    <section class="mt-10">
+      <div class="space-y-5">
+        <div>
+          <label class="mb-3 block text-[15px] font-bold text-[#594139]">猫咪名字</label>
+          <input
+            v-model="form.name"
+            type="text"
+            placeholder="输入超可爱的名字"
+            class="h-[58px] w-full rounded-[20px] border border-[#dbe2f4] bg-white px-6 text-[14px] text-on-background outline-none placeholder:text-[#8f9aab]"
+          />
+        </div>
+
+        <div>
+          <label class="mb-3 block text-[15px] font-bold text-[#594139]">品种选择</label>
+          <div class="relative">
+            <select
+              v-model="form.breed"
+              class="h-[58px] w-full appearance-none rounded-[20px] border border-[#dbe2f4] bg-white px-6 pr-14 text-[14px] text-on-background outline-none"
+            >
+              <option disabled value="">选择猫咪品种</option>
+              <option v-for="option in breedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
+            </select>
+            <van-icon name="arrow-down" class="absolute right-5 top-1/2 -translate-y-1/2 text-[#594139]" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="mb-3 block text-[15px] font-bold text-[#594139]">年龄/生日</label>
+            <input
+              v-model="form.ageBirthdayText"
+              type="text"
+              placeholder="2岁 / 2022-05"
+              class="h-[58px] w-full rounded-[20px] border border-[#dbe2f4] bg-white px-5 text-[14px] text-on-background outline-none placeholder:text-[#8f9aab]"
+            />
+          </div>
+
+          <div>
+            <label class="mb-3 block text-[15px] font-bold text-[#594139]">体重 (kg)</label>
+            <input
+              v-model="form.weightKg"
+              type="number"
+              placeholder="4.5"
+              class="h-[58px] w-full rounded-[20px] border border-[#dbe2f4] bg-white px-5 text-[14px] text-on-background outline-none placeholder:text-[#8f9aab]"
+            />
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="mt-4">
-      <van-cell-group inset>
-        <van-field v-model="form.name" name="name" label="名字" placeholder="输入超可爱的名字" />
-
-        <van-field name="breed" label="品种">
-          <template #input>
-            <select
-              v-model="form.breed"
-              class="h-8 w-full bg-transparent text-sm text-on-background outline-none"
-            >
-              <option disabled value="">请选择</option>
-              <option v-for="option in breedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-            </select>
-          </template>
-        </van-field>
-
-        <van-field
-          v-model="form.ageBirthdayText"
-          name="ageBirthdayText"
-          label="生日(月)"
-          placeholder="例如 2022-05"
-        />
-
-        <van-field v-model="form.weightKg" name="weightKg" label="体重(kg)" placeholder="例如 4.5" type="number" />
-      </van-cell-group>
-    </section>
-
-    <section class="mt-4 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-      <div class="text-sm font-semibold text-on-background">疫苗情况</div>
-      <div class="mt-3 flex flex-wrap gap-2">
+    <section class="mt-7">
+      <div class="text-[15px] font-bold text-[#594139]">疫苗情况</div>
+      <div class="mt-3 flex flex-wrap gap-3">
         <button
           v-for="tag in vaccineTags"
           :key="tag"
           type="button"
-          class="px-4 py-2 rounded-full text-xs font-semibold transition-all active:scale-95"
+          class="rounded-full px-5 py-2 text-[14px] font-medium transition-all active:scale-95"
           :class="isVaccineSelected(tag)
-            ? 'bg-primary text-on-primary'
-            : 'bg-surface-container-high text-on-surface-variant'"
+            ? 'bg-[#ff6b35] text-white'
+            : 'bg-[#dfe4f8] text-[#594139]'"
           @click="toggleVaccine(tag)"
         >
           {{ tag }}
         </button>
+
+        <button
+          type="button"
+          class="rounded-full border border-dashed border-[#e3c4b9] px-5 py-2 text-[14px] font-medium text-[#594139]"
+        >
+          + 自定义
+        </button>
       </div>
     </section>
 
-    <div class="mt-6">
+    <div class="mt-8">
       <button
         type="button"
-        class="h-12 w-full rounded-xl bg-primary text-on-primary font-semibold shadow-cta disabled:opacity-60 active:scale-[0.99]"
+        class="h-[66px] w-full rounded-[20px] bg-gradient-to-br from-[#b83a00] to-[#ff6b35] text-[18px] font-bold text-white shadow-[0_12px_30px_rgba(255,107,53,0.3)] disabled:opacity-60 active:scale-[0.99]"
         :disabled="saving"
         @click="onSave"
       >

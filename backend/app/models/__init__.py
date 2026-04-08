@@ -3,5 +3,5 @@ from app.models.cat_profile import CatProfile
 from app.models.emotion_record import EmotionRecord
 from app.models.health import FeedingRecord, PetWeight
 from app.models.message import FriendLink, Message
-from app.models.social import SocialComment, SocialDynamic, SocialLike
+from app.models.social import SocialComment, SocialCommentLike, SocialDynamic, SocialFavorite, SocialFollow, SocialLike
 from app.models.user import User

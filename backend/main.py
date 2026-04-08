@@ -1,7 +1,10 @@
+from pathlib import Path
+
 from sqlalchemy import text
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import auth
 from app.api.v1 import ai_assistant
@@ -30,6 +33,10 @@ app.include_router(ai_assistant.router)
 app.include_router(health.router)
 app.include_router(social.router)
 app.include_router(message.router)
+
+UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
+UPLOAD_ROOT.mkdir(parents=True, exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory=str(UPLOAD_ROOT)), name="uploads")
 
 
 def migrate_ai_chat_histories_schema() -> None:

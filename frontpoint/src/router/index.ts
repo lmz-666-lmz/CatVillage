@@ -6,8 +6,8 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     name: 'Home',
-    component: () => import('../views/HomeView.vue'),
-    meta: { title: '首页', requiresAuth: true }
+    component: () => import('../views/SocialView.vue'),
+    meta: { title: '社交广场', requiresAuth: true }
   },
   {
     path: '/login',
@@ -28,6 +28,13 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '我的猫咪', requiresAuth: true }
   },
   {
+    path: '/cats/history/:recordId',
+    name: 'MeowRecordDetail',
+    component: () => import('../views/MeowRecordDetailView.vue'),
+    meta: { title: '喵喵台记录详情', requiresAuth: true, hideTabbar: true },
+    props: true
+  },
+  {
     path: '/cats/add',
     name: 'AddCat',
     component: () => import('../views/AddCatView.vue'),
@@ -41,10 +48,30 @@ const routes: RouteRecordRaw[] = [
     props: true
   },
   {
+    path: '/cats/:id/archive',
+    name: 'CatArchive',
+    component: () => import('../views/CatArchiveView.vue'),
+    meta: { title: '猫咪档案', requiresAuth: true, hideTabbar: true },
+    props: true
+  },
+  {
     path: '/social',
     name: 'Social',
     component: () => import('../views/SocialView.vue'),
     meta: { title: '社交广场', requiresAuth: true }
+  },
+  {
+    path: '/social/search',
+    name: 'SocialSearch',
+    component: () => import('../views/SocialSearchView.vue'),
+    meta: { title: '广场搜索', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/social/:id',
+    name: 'SocialDetail',
+    component: () => import('../views/SocialDetailView.vue'),
+    meta: { title: '动态详情', requiresAuth: true, hideTabbar: true },
+    props: true
   },
   {
     path: '/social/create',
@@ -57,6 +84,13 @@ const routes: RouteRecordRaw[] = [
     name: 'Messages',
     component: () => import('../views/MessagesView.vue'),
     meta: { title: '消息中心', requiresAuth: true }
+  },
+  {
+    path: '/messages/chat/:targetUserId',
+    name: 'ChatDetail',
+    component: () => import('../views/ChatDetailView.vue'),
+    meta: { title: '私信聊天', requiresAuth: true, hideTabbar: true },
+    props: true
   },
   {
     path: '/emotions',

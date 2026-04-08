@@ -35,3 +35,30 @@ class SocialLike(Base):
     user_id = Column(String(64), nullable=False, index=True)
     is_active = Column(Boolean, nullable=False, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class SocialFavorite(Base):
+    __tablename__ = "social_favorites"
+
+    id = Column(String(64), primary_key=True, index=True)
+    dynamic_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class SocialFollow(Base):
+    __tablename__ = "social_follows"
+
+    id = Column(String(64), primary_key=True, index=True)
+    follower_id = Column(String(64), nullable=False, index=True)
+    followed_user_id = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class SocialCommentLike(Base):
+    __tablename__ = "social_comment_likes"
+
+    id = Column(String(64), primary_key=True, index=True)
+    comment_id = Column(String(64), nullable=False, index=True)
+    user_id = Column(String(64), nullable=False, index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
