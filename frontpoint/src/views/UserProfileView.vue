@@ -1,79 +1,91 @@
 <template>
-  <div class="page-container profile-page">
-    <van-nav-bar title="完善个人信息" left-arrow @click-left="router.back()" />
+  <div class="px-6 pt-6 pb-6">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight text-on-background">我的</h1>
+        <p class="mt-1 text-sm text-on-surface-variant">账号信息与基础设置</p>
+      </div>
+      <van-icon name="setting-o" size="20" class="text-on-surface-variant" />
+    </header>
 
-    <van-form @submit="onSubmit">
-      <div class="content">
-        <div class="avatar-block">
+    <van-form class="mt-6" @submit="onSubmit">
+      <section class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
+        <div class="flex items-center gap-4">
           <van-uploader
             v-model="avatarList"
             :max-count="1"
             :preview-image="false"
             :after-read="onAvatarRead"
-            class="avatar-uploader"
           >
-            <div class="avatar-ring">
-              <van-image v-if="avatarUrl" :src="avatarUrl" fit="cover" class="avatar-image" />
-              <div v-else class="avatar-placeholder" />
-              <div class="avatar-camera">
-                <van-icon name="photograph" />
-              </div>
+            <div class="h-16 w-16 overflow-hidden rounded-2xl border border-surface-container-high bg-surface-container-high grid place-items-center">
+              <van-image v-if="avatarUrl" :src="avatarUrl" fit="cover" width="64" height="64" />
+              <span v-else class="text-2xl">👩</span>
             </div>
           </van-uploader>
-          <div class="avatar-text">点击上传头像</div>
-        </div>
 
-        <div class="form-block">
-          <label class="field-label" for="profile-nickname">昵称</label>
-          <van-field
-            id="profile-nickname"
-            v-model="nickname"
-            name="nickname"
-            placeholder="请输入您的昵称"
-            :rules="[{ required: true, message: '请输入昵称' }]"
-          />
-        </div>
-
-        <div class="form-block">
-          <label class="field-label">性别</label>
-          <div class="gender-options">
-            <button type="button" class="gender-card" :class="{ active: gender === 'male' }" @click="gender = 'male'">
-              <span class="gender-dot male" />
-              <span>男</span>
-            </button>
-            <button
-              type="button"
-              class="gender-card"
-              :class="{ active: gender === 'female' }"
-              @click="gender = 'female'"
-            >
-              <span class="gender-dot female" />
-              <span>女</span>
-            </button>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm text-on-surface-variant">点击头像可更换</div>
+            <div class="mt-1 text-base font-semibold text-on-background truncate">{{ nickname || '未设置昵称' }}</div>
           </div>
         </div>
+      </section>
 
-        <div class="form-block">
-          <label class="field-label" for="profile-bio">个人简介</label>
+      <section class="mt-4">
+        <van-cell-group inset>
           <van-field
-            id="profile-bio"
+            v-model="nickname"
+            name="nickname"
+            label="昵称"
+            placeholder="请输入昵称"
+            :rules="[{ required: true, message: '请输入昵称' }]"
+          />
+
+          <van-field
+            v-model="gender"
+            name="gender"
+            label="性别"
+            readonly
+            is-link
+            placeholder="请选择"
+            @click="showGenderPicker = true"
+          />
+
+          <van-field
             v-model="bio"
             name="bio"
+            label="简介"
             type="textarea"
-            rows="4"
+            rows="3"
             autosize
-            placeholder="简单介绍一下自己和你的萌宠吧..."
+            placeholder="简单介绍一下你和你的萌宠..."
           />
-        </div>
-      </div>
+        </van-cell-group>
+      </section>
 
-      <div class="bottom-actions">
-        <van-button class="primary-button" round block type="primary" native-type="submit">
-          开启猫村之旅
-          <van-icon name="arrow" class="arrow-icon" />
-        </van-button>
+      <div class="mt-5 space-y-3">
+        <button
+          type="submit"
+          class="h-12 w-full rounded-xl bg-primary text-on-primary font-semibold shadow-cta active:scale-[0.99]"
+        >
+          保存
+        </button>
+
+        <button
+          type="button"
+          class="h-12 w-full rounded-xl border border-outline-variant bg-surface-container-lowest text-on-background font-semibold active:scale-[0.99]"
+          @click="logout"
+        >
+          退出登录
+        </button>
       </div>
     </van-form>
+
+    <van-action-sheet v-model:show="showGenderPicker" title="选择性别">
+      <div class="p-4 space-y-2">
+        <van-button block type="primary" @click="setGender('女')">女</van-button>
+        <van-button block type="primary" plain @click="setGender('男')">男</van-button>
+      </div>
+    </van-action-sheet>
   </div>
 </template>
 
@@ -88,8 +100,9 @@ const router = useRouter();
 const avatarList = ref<UploaderFileListItem[]>([]);
 const avatarUrl = ref('');
 const nickname = ref('');
-const gender = ref<'male' | 'female'>('female');
+const gender = ref<'男' | '女'>('女');
 const bio = ref('');
+const showGenderPicker = ref(false);
 
 const onAvatarRead = (file: UploaderFileListItem | UploaderFileListItem[]) => {
   const fileItem = Array.isArray(file) ? file[0] : file;
@@ -101,180 +114,28 @@ const onAvatarRead = (file: UploaderFileListItem | UploaderFileListItem[]) => {
   }
 };
 
+const setGender = (value: '男' | '女') => {
+  gender.value = value;
+  showGenderPicker.value = false;
+};
+
 const onSubmit = async () => {
-  if (!nickname.value) {
+  if (!nickname.value.trim()) {
     showToast({ type: 'fail', message: '请填写昵称' });
     return;
   }
-  showToast({ type: 'loading', message: '正在开启旅程...', forbidClick: true, duration: 0 });
-  await new Promise(resolve => setTimeout(resolve, 800));
+
+  showToast({ type: 'loading', message: '正在保存...', forbidClick: true, duration: 0 });
+  await new Promise((resolve) => setTimeout(resolve, 500));
   closeToast();
-  showToast({ type: 'success', message: '个人信息已保存' });
-  router.replace({ name: 'Home' });
+  showToast({ type: 'success', message: '已保存' });
+};
+
+const logout = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('cats');
+  localStorage.removeItem('currentCatId');
+  showToast({ message: '已退出登录' });
+  router.replace({ name: 'Login' });
 };
 </script>
-
-<style scoped>
-.page-container {
-  min-height: 100vh;
-  background: radial-gradient(circle at 20% 10%, #fff2df 0, #fff8f1 40%, #fdf7f1 100%);
-  color: #1d1f23;
-}
-
-.content {
-  padding: 10px 20px 20px;
-}
-
-.avatar-block {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin: 12px 0 22px;
-}
-
-.avatar-uploader {
-  width: 160px;
-  display: flex;
-  justify-content: center;
-}
-
-.avatar-ring {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: #f5e4cd;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  box-shadow: 0 18px 30px rgba(255, 138, 0, 0.18);
-}
-
-.avatar-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #fbd7a5 0%, #f7e3c8 60%, #f1e7d8 100%);
-  filter: blur(0.2px);
-}
-
-.avatar-image {
-  width: 100%;
-  height: 100%;
-}
-
-.avatar-camera {
-  position: absolute;
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
-  background: #ff8a00;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffffff;
-  font-size: 20px;
-  box-shadow: 0 10px 18px rgba(255, 138, 0, 0.3);
-}
-
-.avatar-text {
-  margin-top: 12px;
-  color: #ff8a00;
-  font-weight: 600;
-}
-
-.form-block {
-  margin-bottom: 18px;
-}
-
-.field-label {
-  display: block;
-  margin-bottom: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #3f4349;
-}
-
-.gender-options {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-}
-
-.gender-card {
-  border-radius: 16px;
-  padding: 14px 16px;
-  border: 2px solid #f1e1d1;
-  background: #ffffff;
-  color: #2b2f33;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  box-shadow: 0 10px 18px rgba(51, 51, 51, 0.04);
-}
-
-.gender-card.active {
-  border-color: #ff8a00;
-  background: #fff1df;
-  color: #ff7a00;
-}
-
-.gender-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: inline-block;
-}
-
-.gender-dot.male {
-  background: #4a90ff;
-}
-
-.gender-dot.female {
-  background: #ff5fa3;
-}
-
-.bottom-actions {
-  padding: 8px 20px 28px;
-}
-
-.primary-button {
-  background: linear-gradient(135deg, #ff9900 0%, #ff7a00 100%);
-  border: none;
-  height: 54px;
-  font-size: 16px;
-  font-weight: 600;
-  box-shadow: 0 18px 30px rgba(255, 122, 0, 0.3);
-}
-
-.arrow-icon {
-  margin-left: 8px;
-}
-
-:deep(.van-nav-bar) {
-  background: transparent;
-}
-
-:deep(.van-nav-bar__title) {
-  font-weight: 700;
-  color: #1b1f24;
-}
-
-:deep(.van-field) {
-  border-radius: 16px;
-  background: #ffffff;
-  padding: 12px 10px;
-  box-shadow: 0 8px 18px rgba(51, 51, 51, 0.06);
-}
-
-:deep(.van-field__control) {
-  font-size: 15px;
-  color: #1d1f23;
-}
-
-:deep(.van-field__control::placeholder) {
-  color: #a0a6ad;
-}
-</style>

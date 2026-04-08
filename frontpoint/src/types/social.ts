@@ -4,7 +4,7 @@
 export interface PublishDynamicRequest {
   catId: string;
   content: string;
-  images?: string[]; // 图片链接数组
+  images?: File[]; // 图片文件数组（multipart/form-data）
 }
 
 // 动态响应

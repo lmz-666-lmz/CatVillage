@@ -1,268 +1,155 @@
 <template>
-  <div class="page-container social-page">
-    <header class="topbar">
-      <div class="brand">智宠通译</div>
-      <div class="search-box">
-        <van-icon name="search" />
-        <span>搜索宠物动态</span>
+  <div class="px-6 pt-6 pb-6">
+    <header class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-semibold tracking-tight text-on-background">广场</h1>
+        <p class="mt-1 text-sm text-on-surface-variant">和大家分享猫咪日常</p>
       </div>
-      <van-icon name="setting-o" size="24" color="#5b6981" />
+      <div class="flex items-center gap-2">
+        <van-button size="small" plain type="primary" @click="refresh">刷新</van-button>
+        <van-button size="small" type="primary" @click="router.push({ name: 'CreatePost' })">发布</van-button>
+      </div>
     </header>
 
-    <van-tabs v-model:active="activeTab" line-width="34" line-height="3" color="#ff8a00">
-      <van-tab title="关注" name="follow" />
-      <van-tab title="推荐" name="recommend" />
-      <van-tab title="同城" name="city" />
-    </van-tabs>
+    <div class="mt-5 grid grid-cols-3 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-1">
+      <button
+        type="button"
+        class="h-9 rounded-xl text-sm font-semibold"
+        :class="activeTab === 'follow' ? 'bg-primary text-on-primary shadow-cta' : 'text-on-surface-variant'"
+        @click="activeTab = 'follow'"
+      >
+        关注
+      </button>
+      <button
+        type="button"
+        class="h-9 rounded-xl text-sm font-semibold"
+        :class="activeTab === 'recommend' ? 'bg-primary text-on-primary shadow-cta' : 'text-on-surface-variant'"
+        @click="activeTab = 'recommend'"
+      >
+        推荐
+      </button>
+      <button
+        type="button"
+        class="h-9 rounded-xl text-sm font-semibold"
+        :class="activeTab === 'city' ? 'bg-primary text-on-primary shadow-cta' : 'text-on-surface-variant'"
+        @click="activeTab = 'city'"
+      >
+        同城
+      </button>
+    </div>
 
-    <section class="feed-list">
-      <article class="post-card" v-for="item in feedList" :key="item.id">
-        <div class="post-head">
-          <div class="author">
-            <div class="avatar">🐱</div>
-            <div>
-              <h3>{{ item.author }}</h3>
-              <p>{{ item.time }} · {{ item.city }}</p>
+    <section class="mt-6">
+      <div v-if="loading" class="py-10 text-center">
+        <van-loading size="24" />
+        <div class="mt-3 text-sm text-on-surface-variant">正在加载动态...</div>
+      </div>
+
+      <div v-else-if="dynamics.length === 0" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center">
+        <div class="text-3xl">📷</div>
+        <div class="mt-3 text-base font-semibold text-on-background">暂无动态</div>
+        <div class="mt-1 text-sm text-on-surface-variant">成为第一个分享猫咪日常的人</div>
+      </div>
+
+      <div v-else class="space-y-4">
+        <article
+          v-for="item in dynamics"
+          :key="item.id"
+          class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4"
+        >
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 min-w-0">
+              <van-image :src="item.avatar" fit="cover" width="44" height="44" round />
+              <div class="min-w-0">
+                <div class="truncate text-sm font-semibold text-on-background">{{ item.username }}</div>
+                <div class="mt-0.5 text-xs text-on-surface-variant">{{ formatRelativeTime(item.createdAt) }}</div>
+              </div>
+            </div>
+            <van-tag v-if="item.catName" plain type="primary">{{ item.catName }}</van-tag>
+          </div>
+
+          <p class="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-on-background">{{ item.content }}</p>
+
+          <div v-if="item.images && item.images.length" class="mt-3 grid grid-cols-3 gap-2">
+            <van-image
+              v-for="(img, idx) in item.images"
+              :key="idx"
+              :src="img"
+              fit="cover"
+              width="100%"
+              height="88"
+              radius="12"
+            />
+          </div>
+
+          <div class="mt-4 flex items-center justify-between gap-3 text-sm">
+            <button
+              type="button"
+              class="flex items-center gap-2 text-on-surface-variant"
+              :disabled="likingId === item.id"
+              @click="toggleLike(item)"
+            >
+              <van-icon :name="item.isLiked ? 'like' : 'like-o'" />
+              <span>{{ item.likeCount || 0 }}</span>
+            </button>
+            <div class="flex items-center gap-2 text-on-surface-variant">
+              <van-icon name="comment-o" />
+              <span>{{ item.commentCount || 0 }}</span>
             </div>
           </div>
-          <button class="more-btn" type="button">···</button>
-        </div>
-
-        <div class="post-images" :class="{ single: item.images.length === 1 }">
-          <div class="image-box" v-for="(image, idx) in item.images" :key="idx" :style="{ background: image }" />
-        </div>
-
-        <p class="post-text">{{ item.content }}</p>
-
-        <div class="translate-box">
-          <div class="play-icon">▶</div>
-          <div class="translate-text">AI 翻译：{{ item.translation }}</div>
-          <div class="duration">0:04</div>
-        </div>
-
-        <div class="post-actions">
-          <button type="button" @click="item.likes += 1">❤ {{ item.likes }}</button>
-          <button type="button">💬 {{ item.comments }}</button>
-          <button type="button">↗ 分享</button>
-        </div>
-      </article>
+        </article>
+      </div>
     </section>
-
-    <button class="add-post" type="button" @click="router.push({ name: 'CreatePost' })">＋</button>
-
-    <van-tabbar route>
-      <van-tabbar-item icon="location-o" to="/social">广场</van-tabbar-item>
-      <van-tabbar-item icon="setting-o" to="/ai-assistant">AI助理</van-tabbar-item>
-      <van-tabbar-item icon="smile-o" to="/emotions">喵喵台</van-tabbar-item>
-      <van-tabbar-item icon="chat-o" to="/messages">消息</van-tabbar-item>
-      <van-tabbar-item icon="contact-o" to="/cats">我的</van-tabbar-item>
-    </van-tabbar>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { showToast } from 'vant';
+import { useSocialFeatures } from '@/composables/useSocialFeatures';
+import { formatRelativeTime } from '@/utils/date';
+import type { SocialDynamic } from '@/types/social';
 
 const router = useRouter();
-const activeTab = ref('recommend');
+const activeTab = ref<'follow' | 'recommend' | 'city'>('recommend');
 
-const feedList = ref([
-  {
-    id: '1',
-    author: '芝士奶盖酱',
-    time: '15分钟前',
-    city: '杭州',
-    images: ['linear-gradient(135deg, #8a5b2b 0%, #3b2b1a 100%)'],
-    content: '今天的大橘好像有很多话要说，一直对着我喵喵叫。用了智宠通译才知道，原来它是饿了想吃罐罐了！',
-    translation: '我想吃鱼肉罐头啦！',
-    likes: 1200,
-    comments: 84
-  },
-  {
-    id: '2',
-    author: '布丁的铲屎官',
-    time: '1小时前',
-    city: '上海',
-    images: ['linear-gradient(135deg, #96653d 0%, #3a291f 100%)', 'linear-gradient(135deg, #7d4f2f 0%, #2f1e17 100%)'],
-    content: '今天带布丁去体检，小家伙有点紧张，一直在喵喵抗议。翻译结果是：我想回家躲在被子里。',
-    translation: '这里太陌生了，我想回家',
-    likes: 328,
-    comments: 12
+const { fetchDynamicsList, likeADynamic, unlikeADynamic, getCurrentDynamics } = useSocialFeatures();
+
+const loading = ref(false);
+const likingId = ref<string>('');
+const dynamics = computed(() => getCurrentDynamics.value);
+
+const refresh = async () => {
+  if (loading.value) {
+    return;
   }
-]);
+  loading.value = true;
+  try {
+    await fetchDynamicsList({ page: 1, pageSize: 20 });
+  } catch {
+    showToast({ type: 'fail', message: '加载失败，请稍后重试' });
+  } finally {
+    loading.value = false;
+  }
+};
+
+const toggleLike = async (dynamic: SocialDynamic) => {
+  if (likingId.value) {
+    return;
+  }
+  likingId.value = dynamic.id;
+  try {
+    if (dynamic.isLiked) {
+      await unlikeADynamic(dynamic.id);
+      return;
+    }
+    await likeADynamic(dynamic.id);
+  } catch {
+    showToast({ type: 'fail', message: '操作失败，请稍后重试' });
+  } finally {
+    likingId.value = '';
+  }
+};
+
+onMounted(refresh);
 </script>
-
-<style scoped>
-.page-container {
-  min-height: 100vh;
-  background: #f6f7f9;
-  padding: 10px 14px 84px;
-}
-
-.topbar {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 10px;
-  align-items: center;
-}
-
-.brand {
-  color: #ff7f00;
-  font-size: 30px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.search-box {
-  height: 38px;
-  border-radius: 999px;
-  border: 1px solid #e9edf3;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0 12px;
-  color: #8b9ab3;
-  background: #fff;
-}
-
-.feed-list {
-  margin-top: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.post-card {
-  background: #fff;
-  border-radius: 16px;
-  border: 1px solid #eceff4;
-  padding: 12px;
-}
-
-.post-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.author {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: #ffe7c6;
-  display: grid;
-  place-items: center;
-}
-
-.author h3 {
-  margin: 0;
-  color: #121a2b;
-  font-size: 18px;
-}
-
-.author p {
-  margin: 2px 0 0;
-  color: #73829a;
-  font-size: 12px;
-}
-
-.more-btn {
-  border: none;
-  background: transparent;
-  color: #ff9800;
-  font-size: 18px;
-}
-
-.post-images {
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.post-images.single {
-  grid-template-columns: 1fr;
-}
-
-.image-box {
-  height: 180px;
-  border-radius: 12px;
-}
-
-.post-text {
-  margin: 10px 0;
-  color: #1b2538;
-  line-height: 1.7;
-}
-
-.translate-box {
-  border-radius: 14px;
-  border: 1px solid #f2ddbf;
-  background: #fffaf2;
-  padding: 10px;
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 8px;
-}
-
-.play-icon {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: #ff9800;
-  color: #fff;
-  display: grid;
-  place-items: center;
-}
-
-.translate-text {
-  color: #ff8a00;
-  font-weight: 700;
-}
-
-.duration {
-  color: #ffa84a;
-}
-
-.post-actions {
-  margin-top: 10px;
-  display: flex;
-  gap: 18px;
-}
-
-.post-actions button {
-  border: none;
-  background: transparent;
-  color: #61738e;
-  padding: 0;
-}
-
-.add-post {
-  position: fixed;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 68px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  background: #ff4b4b;
-  color: #fff;
-  font-size: 34px;
-  line-height: 1;
-  box-shadow: 0 8px 16px rgba(255, 75, 75, 0.28);
-}
-
-:deep(.van-tabbar-item--active),
-:deep(.van-tabs__nav .van-tab--active) {
-  color: #ff8a00;
-}
-</style>

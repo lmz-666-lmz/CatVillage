@@ -7,6 +7,36 @@ import axios, {
 } from 'axios';
 import type { ApiResponse } from '@/types/common';
 
+type OAuthTokenResponse = {
+  access_token: string;
+  token_type?: string;
+};
+
+type StandardApiEnvelope = {
+  code: number;
+  msg: string;
+  data: unknown;
+};
+
+type RequestResult<T> = T extends { access_token: string } ? T : ApiResponse<T>;
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null;
+
+const isOAuthTokenResponse = (value: unknown): value is OAuthTokenResponse => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value.access_token === 'string' && value.access_token.length > 0;
+};
+
+const isStandardApiEnvelope = (value: unknown): value is StandardApiEnvelope => {
+  if (!isRecord(value)) {
+    return false;
+  }
+  return typeof value.code === 'number' && typeof value.msg === 'string' && 'data' in value;
+};
+
 type RequestError = Error & {
   status?: number;
   code?: number;
@@ -62,14 +92,18 @@ client.interceptors.response.use(
 );
 
 // 核心请求函数：已修正兼容性逻辑
-const request = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T> | any> => {
+const request = async <T>(config: AxiosRequestConfig): Promise<RequestResult<T>> => {
   try {
     const response = await client.request(config);
-    const res = response.data as any;
+    const res: unknown = response.data;
 
     // 💥 兼容处理：如果是 OAuth2 登录返回的 Token 格式，直接返回数据
-    if (res.access_token) {
-      return res;
+    if (isOAuthTokenResponse(res)) {
+      return res as unknown as RequestResult<T>;
+    }
+
+    if (!isStandardApiEnvelope(res)) {
+      return Promise.reject(createRequestError('Invalid API response'));
     }
 
     // 标准业务接口校验
@@ -81,11 +115,17 @@ const request = async <T>(config: AxiosRequestConfig): Promise<ApiResponse<T> | 
       return Promise.reject(createRequestError(res.msg || 'API Error', res.code, res.code));
     }
 
-    return res;
+    return res as unknown as RequestResult<T>;
   } catch (error) {
-    const axiosError = error as AxiosError<any>;
+    const axiosError = error as AxiosError<unknown>;
     const status = axiosError.response?.status;
-    const backendMessage = axiosError.response?.data?.detail || axiosError.response?.data?.msg;
+    const backendData = axiosError.response?.data;
+    const backendMessage =
+      isRecord(backendData) && typeof backendData.detail === 'string'
+        ? backendData.detail
+        : isRecord(backendData) && typeof backendData.msg === 'string'
+          ? backendData.msg
+          : undefined;
 
     if (status === 401) {
       localStorage.removeItem('token');

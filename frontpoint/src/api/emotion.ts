@@ -153,7 +153,7 @@ export function getWarningList(params: { page: number; pageSize: number; catId?:
   const skip = Math.max(0, (params.page - 1) * params.pageSize);
   const limit = Math.max(1, params.pageSize);
 
-  return request({
+  return request<{ list: WarningResponse[]; total: number }>({
     url: '/emotions/warnings/list',
     method: 'get',
     params: {
@@ -167,7 +167,7 @@ export function getWarningList(params: { page: number; pageSize: number; catId?:
 
 // 标记预警状态
 export function markWarningStatus(warningId: string, status: string): Promise<ApiResponse<{ success: boolean }>> {
-  return request({
+  return request<{ success: boolean }>({
     url: `/emotions/warnings/${warningId}/status`,
     method: 'put',
     data: { status }

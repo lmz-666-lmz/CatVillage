@@ -6,8 +6,6 @@ import './assets/tailwind.css'
 import Vant from 'vant';
 import 'vant/lib/index.css';
 
-import './assets/tailwind.css';
-
 import App from './App.vue'
 import router from './router'
 

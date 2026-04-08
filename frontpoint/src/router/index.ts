@@ -90,7 +90,7 @@ const router = createRouter({
 });
 
 // 路由守卫：已修正为 Vue Router 4 推荐写法
-router.beforeEach((to, from) => {
+router.beforeEach((to, _from) => {
   // 设置页面标题
   document.title = (to.meta.title as string) || '猫咪社交与健康管理APP';
 
