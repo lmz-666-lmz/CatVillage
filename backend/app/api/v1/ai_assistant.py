@@ -1,9 +1,9 @@
 import os
 import uuid  # <-- 我加了这个
-from datetime import datetime  # <-- 我加了这个
+from datetime import datetime, timezone  # <-- 我加了这个
 
 from fastapi import APIRouter, Depends, HTTPException
-from openai import OpenAI
+from openai import AsyncOpenAI
 from sqlalchemy.orm import Session
 from fastapi import Query, status
 
@@ -23,7 +23,7 @@ AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.deepseek.com")
 if not AI_API_KEY or AI_API_KEY.strip() in {"", "你的真实API密钥"}:
     print("warning: AI_API_KEY is missing or still a placeholder")
 
-client = OpenAI(
+aclient = AsyncOpenAI(
     api_key=AI_API_KEY,
     base_url=AI_BASE_URL,
 )
@@ -92,7 +92,7 @@ def clear_session(
 
 
 @router.post("/chat")
-def chat(
+async def chat(
     request: ChatRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -126,7 +126,7 @@ def chat(
     )
 
     try:
-        response = client.chat.completions.create(
+        response = await aclient.chat.completions.create(
             model="deepseek-chat",
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -146,7 +146,7 @@ def chat(
             user_id=current_user.id,
             question=request.user_message,
             answer=reply_text,
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
         )
         db.add(history)
         db.commit()

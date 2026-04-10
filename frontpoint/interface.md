@@ -42,7 +42,7 @@
 import axios from 'axios';
 
 const request = axios.create({
-  baseURL: process.env.VUE_APP_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
   timeout: 10000,
 });
 

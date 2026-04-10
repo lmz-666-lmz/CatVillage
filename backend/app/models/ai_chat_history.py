@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, String, Text
 
@@ -13,4 +13,4 @@ class AIChatHistory(Base):
     user_id = Column(String(50), index=True, comment="用户ID")
     question = Column(Text, nullable=False)
     answer = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, comment="创建时间")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), comment="创建时间")
