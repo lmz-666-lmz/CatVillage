@@ -5,11 +5,12 @@ from collections import Counter
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
-from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func, update
 
 from app.core.dependencies import get_current_user
 from app.core.dependencies import get_optional_current_user
+from app.core.storage import storage_service
 from app.database.session import get_db
 from app.models.cat_profile import CatProfile
 from app.models.social import SocialComment, SocialCommentLike, SocialDynamic, SocialFavorite, SocialFollow, SocialLike
@@ -26,28 +27,14 @@ from app.schemas.social import (
     LikeResponse,
     FavoriteResponse,
     DeleteResponse,
-    FollowResponse
+    FollowResponse,
+    ResponseEnvelope
 )
 
 router = APIRouter(prefix="/social", tags=["social"])
 
-UPLOAD_ROOT = Path(__file__).resolve().parents[3] / "uploads"
-SOCIAL_UPLOAD_DIR = UPLOAD_ROOT / "social"
-SOCIAL_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-
-
 def _save_social_image(file: UploadFile) -> str:
-    extension = Path(file.filename or "").suffix.lower()
-    if not extension:
-        extension = ".jpg"
-    filename = f"{uuid4().hex}{extension}"
-    target = SOCIAL_UPLOAD_DIR / filename
-
-    with target.open("wb") as output:
-        output.write(file.file.read())
-
-    return f"/api/v1/uploads/social/{filename}"
-
+    return storage_service.upload(file, sub_dir="social")
 
 def _parse_images(raw_images: str | None) -> list[str]:
     if not raw_images:
@@ -61,7 +48,7 @@ def _parse_images(raw_images: str | None) -> list[str]:
     return [str(item) for item in parsed if isinstance(item, str) and item.strip()]
 
 
-def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Session) -> dict:
+def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Session) -> DynamicResponse:
     user = db.query(User).filter(User.id == dynamic.user_id).first()
     cat = None
     if dynamic.cat_id:
@@ -120,24 +107,15 @@ def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Se
         is_favorited=is_favorited,
         is_following=is_following,
         is_owner=bool(current_user and dynamic.user_id == current_user.id),
-    ).model_dump(by_alias=True)
+    )
 
 
-def _serialize_dynamic_list(items: list[SocialDynamic], current_user: User | None, db: Session) -> list[dict]:
+def _serialize_dynamic_list(items: list[SocialDynamic], current_user: User | None, db: Session) -> list[DynamicResponse]:
     if not items:
         return []
 
     user_ids = {item.user_id for item in items}
-    cat_ids = {item.cat_id for item in items if item.cat_id}
     dynamic_ids = {item.id for item in items}
-
-    user_rows = db.query(User.id, User.username).filter(User.id.in_(user_ids)).all()
-    user_map = {user_id: username for user_id, username in user_rows}
-
-    cat_map: dict[str, str] = {}
-    if cat_ids:
-        cat_rows = db.query(CatProfile.id, CatProfile.name).filter(CatProfile.id.in_(cat_ids)).all()
-        cat_map = {cat_id: cat_name for cat_id, cat_name in cat_rows}
 
     liked_ids: set[str] = set()
     favorited_ids: set[str] = set()
@@ -186,9 +164,9 @@ def _serialize_dynamic_list(items: list[SocialDynamic], current_user: User | Non
             id=dynamic.id,
             user_id=dynamic.user_id,
             cat_id=dynamic.cat_id,
-            username=user_map.get(dynamic.user_id, ""),
-            cat_name=cat_map.get(dynamic.cat_id, "") if dynamic.cat_id else None,
-            avatar="",
+            username=dynamic.user.username if dynamic.user else "",
+            cat_name=dynamic.cat.name if dynamic.cat else None,
+            avatar=getattr(dynamic.user, "avatar", "") if dynamic.user else "",
             content=dynamic.content,
             images=_parse_images(dynamic.images),
             like_count=dynamic.like_count,
@@ -199,13 +177,13 @@ def _serialize_dynamic_list(items: list[SocialDynamic], current_user: User | Non
             is_favorited=dynamic.id in favorited_ids,
             is_following=dynamic.user_id in following_user_ids,
             is_owner=bool(current_user and dynamic.user_id == current_user.id),
-        ).model_dump(by_alias=True)
+        )
         serialized.append(data)
 
     return serialized
 
 
-def _serialize_comment(comment: SocialComment, current_user: User, db: Session) -> dict:
+def _serialize_comment(comment: SocialComment, current_user: User, db: Session) -> CommentResponse:
     user = db.query(User).filter(User.id == comment.user_id).first()
     like_count = db.query(func.count(SocialCommentLike.id)).filter(SocialCommentLike.comment_id == comment.id).scalar() or 0
     is_liked = False
@@ -230,7 +208,7 @@ def _serialize_comment(comment: SocialComment, current_user: User, db: Session) 
         like_count=int(like_count),
         is_liked=is_liked,
         is_owner=comment.user_id == current_user.id,
-    ).model_dump(by_alias=True)
+    )
 
 
 def _extract_topics(content: str) -> list[str]:
@@ -239,7 +217,7 @@ def _extract_topics(content: str) -> list[str]:
     return [item.strip() for item in raw if item.strip()]
 
 
-@router.post("/dynamics")
+@router.post("/dynamics", response_model=ResponseEnvelope[DynamicResponse])
 async def publish_dynamic(
     content: str = Form(...),
     cat_id: str | None = Form(None),
@@ -273,19 +251,22 @@ async def publish_dynamic(
     db.commit()
     db.refresh(dynamic)
 
-    return {"code": 200, "msg": "success", "data": _serialize_dynamic(dynamic, current_user, db)}
+    return ResponseEnvelope(data=_serialize_dynamic(dynamic, current_user, db))
 
 
-@router.get("/dynamics/list")
+@router.get("/dynamics/list", response_model=ResponseEnvelope[DynamicsListResponse])
 def list_dynamics(
-    page: int = Query(1, ge=1),
-    pageSize: int = Query(10, ge=1),
+    cursor: str | None = Query(None),
+    limit: int = Query(10, ge=1, alias="pageSize"),
     catId: str | None = Query(None),
     scope: str = Query("all"),
     current_user: User | None = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(SocialDynamic)
+    query = db.query(SocialDynamic).options(
+        joinedload(SocialDynamic.user),
+        joinedload(SocialDynamic.cat)
+    )
     if catId:
         query = query.filter(SocialDynamic.cat_id == catId)
 
@@ -297,36 +278,43 @@ def list_dynamics(
         )
         followed_user_id_set = {user_id for (user_id,) in followed_user_ids}
         if not followed_user_id_set:
-            return {
-                "code": 200,
-                "msg": "success",
-                "data": {
-                    "list": [],
-                    "total": 0,
-                    "page": page,
-                    "pageSize": pageSize,
-                },
-            }
+            return ResponseEnvelope(
+                data=DynamicsListResponse(
+                    list=[],
+                    cursor=None,
+                    limit=limit,
+                )
+            )
         query = query.filter(SocialDynamic.user_id.in_(followed_user_id_set))
     elif scope == "following":
-        return {
-            "code": 200,
-            "msg": "success",
-            "data": DynamicsListResponse(
+        return ResponseEnvelope(
+            data=DynamicsListResponse(
                 list=[],
-                total=0,
-                page=page,
-                page_size=pageSize,
-            ).model_dump(by_alias=True),
-        }
+                cursor=None,
+                limit=limit,
+            )
+        )
 
-    total = query.count()
+    if cursor:
+        try:
+            from dateutil.parser import isoparse
+            cursor_dt = isoparse(cursor)
+            query = query.filter(SocialDynamic.created_at < cursor_dt)
+        except Exception:
+            pass
+
     items = (
         query.order_by(SocialDynamic.created_at.desc())
-        .offset((page - 1) * pageSize)
-        .limit(pageSize)
+        .limit(limit + 1)
         .all()
     )
+
+    has_more = len(items) > limit
+    items = items[:limit]
+
+    next_cursor = None
+    if has_more and items:
+        next_cursor = items[-1].created_at.isoformat()
 
     try:
         safe_list = _serialize_dynamic_list(items, current_user, db)
@@ -334,19 +322,17 @@ def list_dynamics(
         print(f"social.list_dynamics serialization failed: {exc}")
         safe_list = []
 
-    return {
-        "code": 200,
-        "msg": "success",
-        "data": DynamicsListResponse(
+    return ResponseEnvelope(
+        data=DynamicsListResponse(
             list=safe_list,
-            total=total,
-            page=page,
-            page_size=pageSize,
-        ).model_dump(by_alias=True),
-    }
+            cursor=next_cursor,
+            limit=limit,
+            has_more=has_more,
+        )
+    )
 
 
-@router.get("/users/followers/list")
+@router.get("/users/followers/list", response_model=ResponseEnvelope[FollowersListResponse])
 def list_followers(
     page: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1),
@@ -379,10 +365,8 @@ def list_followers(
         )
         following_ids = {user_id for (user_id,) in following_rows}
 
-    return {
-        "code": 200,
-        "msg": "success",
-        "data": FollowersListResponse(
+    return ResponseEnvelope(
+        data=FollowersListResponse(
             list=[
                 FollowerResponse(
                     id=user.id,
@@ -399,11 +383,11 @@ def list_followers(
             total=total,
             page=page,
             page_size=pageSize,
-        ).model_dump(by_alias=True)
-    }
+        )
+    )
 
 
-@router.get("/topics/hot")
+@router.get("/topics/hot", response_model=ResponseEnvelope[HotTopicsResponse])
 def list_hot_topics(
     limit: int = Query(8, ge=1, le=30),
     sampleSize: int = Query(500, ge=50, le=2000),
@@ -425,14 +409,10 @@ def list_hot_topics(
         for topic, count in counter.most_common(limit)
     ]
 
-    return {
-        "code": 200,
-        "msg": "success",
-        "data": HotTopicsResponse(list=hot_list).model_dump(by_alias=True),
-    }
+    return ResponseEnvelope(data=HotTopicsResponse(list=hot_list))
 
 
-@router.get("/dynamics/{dynamic_id}")
+@router.get("/dynamics/{dynamic_id}", response_model=ResponseEnvelope[DynamicResponse])
 def get_dynamic_detail(
     dynamic_id: str,
     current_user: User = Depends(get_current_user),
@@ -470,7 +450,7 @@ def get_dynamic_detail(
 
     try:
         data = _serialize_dynamic(dynamic, current_user, db)
-        data["comments"] = [
+        data.comments = [
             CommentResponse(
                 id=comment.id,
                 user_id=comment.user_id,
@@ -482,17 +462,17 @@ def get_dynamic_detail(
                 like_count=int(db.query(func.count(SocialCommentLike.id)).filter(SocialCommentLike.comment_id == comment.id).scalar() or 0),
                 is_liked=comment.id in comment_like_ids,
                 is_owner=comment.user_id == current_user.id,
-            ).model_dump(by_alias=True)
+            )
             for comment in comments
         ]
     except Exception as exc:
         print(f"social.get_dynamic_detail failed id={dynamic_id}: {exc}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Dynamic serialization failed") from exc
 
-    return {"code": 200, "msg": "success", "data": data}
+    return ResponseEnvelope(data=data)
 
 
-@router.post("/dynamics/{dynamic_id}/like")
+@router.post("/dynamics/{dynamic_id}/like", response_model=ResponseEnvelope[LikeResponse])
 def like_dynamic(
     dynamic_id: str,
     current_user: User = Depends(get_current_user),
@@ -510,21 +490,19 @@ def like_dynamic(
     if like is None:
         like = SocialLike(id=str(uuid4()), dynamic_id=dynamic_id, user_id=current_user.id, is_active=True)
         db.add(like)
+        db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.like_count: SocialDynamic.like_count + 1})
         dynamic.like_count += 1
     elif not like.is_active:
         like.is_active = True
+        db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.like_count: SocialDynamic.like_count + 1})
         dynamic.like_count += 1
 
     db.commit()
 
-    return {
-        "code": 200,
-        "msg": "success",
-        "data": LikeResponse(is_liked=True, like_count=dynamic.like_count).model_dump(by_alias=True),
-    }
+    return ResponseEnvelope(data=LikeResponse(is_liked=True, like_count=dynamic.like_count))
 
 
-@router.delete("/dynamics/{dynamic_id}/like")
+@router.delete("/dynamics/{dynamic_id}/like", response_model=ResponseEnvelope[LikeResponse])
 def unlike_dynamic(
     dynamic_id: str,
     current_user: User = Depends(get_current_user),
@@ -541,17 +519,14 @@ def unlike_dynamic(
     )
     if like and like.is_active:
         like.is_active = False
+        db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.like_count: func.greatest(SocialDynamic.like_count - 1, 0)})
         dynamic.like_count = max(dynamic.like_count - 1, 0)
         db.commit()
 
-    return {
-        "code": 200,
-        "msg": "success",
-        "data": LikeResponse(is_liked=False, like_count=dynamic.like_count).model_dump(by_alias=True),
-    }
+    return ResponseEnvelope(data=LikeResponse(is_liked=False, like_count=dynamic.like_count))
 
 
-@router.post("/dynamics/{dynamic_id}/comments")
+@router.post("/dynamics/{dynamic_id}/comments", response_model=ResponseEnvelope[CommentResponse])
 def post_comment(
     dynamic_id: str,
     payload: CommentCreate,
@@ -569,14 +544,15 @@ def post_comment(
         content=payload.content,
     )
     db.add(comment)
+    db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.comment_count: SocialDynamic.comment_count + 1})
     dynamic.comment_count += 1
     db.commit()
     db.refresh(comment)
 
-    return {"code": 200, "msg": "success", "data": _serialize_comment(comment, current_user, db)}
+    return ResponseEnvelope(data=_serialize_comment(comment, current_user, db))
 
 
-@router.post("/dynamics/{dynamic_id}/favorite")
+@router.post("/dynamics/{dynamic_id}/favorite", response_model=ResponseEnvelope[FavoriteResponse])
 def toggle_favorite_dynamic(
     dynamic_id: str,
     current_user: User = Depends(get_current_user),
@@ -603,14 +579,12 @@ def toggle_favorite_dynamic(
     db.commit()
 
     favorite_count = db.query(func.count(SocialFavorite.id)).filter(SocialFavorite.dynamic_id == dynamic_id).scalar() or 0
-    return {
-        "code": 200, 
-        "msg": "success", 
-        "data": FavoriteResponse(is_favorited=is_favorited, favorite_count=int(favorite_count)).model_dump(by_alias=True)
-    }
+    return ResponseEnvelope(
+        data=FavoriteResponse(is_favorited=is_favorited, favorite_count=int(favorite_count))
+    )
 
 
-@router.post("/users/{user_id}/follow")
+@router.post("/users/{user_id}/follow", response_model=ResponseEnvelope[FollowResponse])
 def toggle_follow_user(
     user_id: str,
     current_user: User = Depends(get_current_user),
@@ -646,14 +620,12 @@ def toggle_follow_user(
         or 0
     )
 
-    return {
-        "code": 200, 
-        "msg": "success", 
-        "data": FollowResponse(is_following=is_following, follower_count=int(follower_count)).model_dump(by_alias=True)
-    }
+    return ResponseEnvelope(
+        data=FollowResponse(is_following=is_following, follower_count=int(follower_count))
+    )
 
 
-@router.post("/comments/{comment_id}/like")
+@router.post("/comments/{comment_id}/like", response_model=ResponseEnvelope[LikeResponse])
 def toggle_like_comment(
     comment_id: str,
     current_user: User = Depends(get_current_user),
@@ -680,14 +652,12 @@ def toggle_like_comment(
     db.commit()
 
     like_count = db.query(func.count(SocialCommentLike.id)).filter(SocialCommentLike.comment_id == comment_id).scalar() or 0
-    return {
-        "code": 200, 
-        "msg": "success", 
-        "data": LikeResponse(is_liked=is_liked, like_count=int(like_count)).model_dump(by_alias=True)
-    }
+    return ResponseEnvelope(
+        data=LikeResponse(is_liked=is_liked, like_count=int(like_count))
+    )
 
 
-@router.delete("/comments/{comment_id}")
+@router.delete("/comments/{comment_id}", response_model=ResponseEnvelope[DeleteResponse])
 def delete_comment(
     comment_id: str,
     current_user: User = Depends(get_current_user),
@@ -704,14 +674,10 @@ def delete_comment(
 
     db.commit()
 
-    return {
-        "code": 200, 
-        "msg": "success", 
-        "data": DeleteResponse(success=True).model_dump(by_alias=True)
-    }
+    return ResponseEnvelope(data=DeleteResponse(success=True))
 
 
-@router.delete("/dynamics/{dynamic_id}")
+@router.delete("/dynamics/{dynamic_id}", response_model=ResponseEnvelope[DeleteResponse])
 def delete_dynamic(
     dynamic_id: str,
     current_user: User = Depends(get_current_user),
@@ -729,14 +695,10 @@ def delete_dynamic(
     db.delete(dynamic)
     db.commit()
 
-    return {
-        "code": 200, 
-        "msg": "success", 
-        "data": DeleteResponse(success=True).model_dump(by_alias=True)
-    }
+    return ResponseEnvelope(data=DeleteResponse(success=True))
 
 
-@router.get("/dynamics/my/list")
+@router.get("/dynamics/my/list", response_model=ResponseEnvelope[DynamicsListResponse])
 def list_my_dynamics(
     page: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1),
@@ -762,13 +724,11 @@ def list_my_dynamics(
         print(f"social.list_my_dynamics serialization failed: {exc}")
         safe_list = []
 
-    return {
-        "code": 200,
-        "msg": "success",
-        "data": DynamicsListResponse(
+    return ResponseEnvelope(
+        data=DynamicsListResponse(
             list=safe_list,
             total=total,
             page=page,
             page_size=pageSize,
-        ).model_dump(by_alias=True),
-    }
+        )
+    )

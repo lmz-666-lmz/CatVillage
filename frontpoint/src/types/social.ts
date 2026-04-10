@@ -46,7 +46,6 @@ export interface DynamicsListResponse {
 
 // 评论请求
 export interface CommentRequest {
-  dynamicId: string;
   content: string;
 }
 

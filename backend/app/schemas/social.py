@@ -1,7 +1,15 @@
-from typing import List, Optional
+from typing import List, Optional, TypeVar, Generic
 
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
+
+T = TypeVar("T")
+
+
+class ResponseEnvelope(BaseModel, Generic[T]):
+    code: int = 200
+    msg: str = "success"
+    data: T
 
 
 class SocialBaseModel(BaseModel):
@@ -52,9 +60,9 @@ class DynamicResponse(SocialBaseModel):
 
 class DynamicsListResponse(SocialBaseModel):
     list: List[DynamicResponse]
-    total: int
-    page: int
-    page_size: int
+    cursor: Optional[str] = None
+    limit: int
+    has_more: bool = False
 
 class FollowResponse(SocialBaseModel):
     is_following: bool
