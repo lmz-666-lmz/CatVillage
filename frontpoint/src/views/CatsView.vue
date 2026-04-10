@@ -1,15 +1,13 @@
 <template>
-  <div class="min-h-[100dvh] bg-[#f8f7f5] px-4 pt-3 pb-6">
-    <header class="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b border-orange-500/10 bg-white/85 px-4 py-3 backdrop-blur-md">
+  <div class="min-h-[100dvh] bg-[radial-gradient(circle_at_15%_-10%,#ffe4cd_0%,#fff7ef_30%,#f7f8fd_100%)] px-4 pt-3 pb-6">
+    <header class="sticky top-0 z-20 -mx-4 flex items-center justify-between border-b border-orange-500/10 bg-white/88 px-4 py-3 backdrop-blur-md">
       <button type="button" class="grid h-9 w-9 place-items-center text-slate-600" @click="router.push({ name: 'Social' })">
         <van-icon name="arrow-left" size="20" />
       </button>
 
-      <h1 class="text-xl font-bold tracking-tight text-orange-500">智宠通译</h1>
+      <h1 class="text-xl font-bold tracking-tight text-orange-500">喵喵台</h1>
 
-      <button type="button" class="grid h-9 w-9 place-items-center text-slate-600" @click="showCatSheet = true">
-        <van-icon name="setting-o" size="20" />
-      </button>
+      <div class="w-9"></div>
     </header>
 
     <section v-if="loading" class="py-10 text-center">
@@ -32,17 +30,25 @@
 
     <section v-else>
       <div class="mt-5 text-center">
-        <h2 class="text-[34px] font-bold tracking-tight text-on-background">喵喵台</h2>
-        <p class="mt-1 text-base text-on-surface-variant">{{ selectedCatHint }}</p>
+        <h2 class="text-[26px] font-bold tracking-tight text-[#2b1f15]">喵喵台</h2>
+        <p class="mt-1 text-[14px] text-[#7a6f68]">{{ selectedCatHint }}</p>
+        <button
+          type="button"
+          class="mt-3 inline-flex items-center gap-1 rounded-full border border-[#ffd7bf] bg-white px-4 py-1.5 text-[13px] font-semibold text-[#da6d2f]"
+          @click="showCatSheet = true"
+        >
+          切换猫咪
+          <van-icon name="arrow-down" size="12" />
+        </button>
       </div>
 
-      <div class="relative mt-3 flex h-96 items-center justify-center overflow-hidden">
-        <div class="absolute h-[360px] w-[360px] rounded-full border border-orange-300/30"></div>
-        <div class="absolute h-[300px] w-[300px] rounded-full border border-orange-300/30"></div>
+      <div class="relative mt-3 flex h-80 items-center justify-center overflow-hidden">
+        <div class="absolute h-72 w-72 rounded-full border border-orange-300/35"></div>
+        <div class="absolute h-60 w-60 rounded-full border border-orange-300/40"></div>
 
         <button
           type="button"
-          class="relative z-10 flex h-48 w-48 flex-col items-center justify-center rounded-full bg-[#ff9800] text-white shadow-[0_12px_30px_rgba(255,152,0,0.35)] active:scale-95"
+          class="relative z-10 flex h-40 w-40 flex-col items-center justify-center rounded-full bg-[linear-gradient(160deg,#ff8d2a_0%,#ff6b35_100%)] text-white shadow-[0_14px_32px_rgba(255,107,53,0.38)] active:scale-95"
           :disabled="analyzing"
           @click="openAudioPicker"
         >
@@ -63,14 +69,14 @@
       </div>
 
       <section class="space-y-4">
-        <article class="rounded-2xl border border-orange-500/5 bg-white p-5 shadow-sm">
+        <article class="rounded-2xl border border-orange-500/10 bg-white p-5 shadow-[0_6px_18px_rgba(20,27,43,0.06)]">
           <div class="mb-4 flex items-center justify-between">
             <span class="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-600">当前状态</span>
             <van-icon name="smile-o" color="#f97316" size="22" />
           </div>
 
-          <h3 class="text-4xl font-bold text-on-background">心情指数：{{ moodLabel }}</h3>
-          <p class="mt-3 text-base leading-relaxed text-slate-600">
+          <h3 class="text-[24px] font-bold text-on-background">心情指数：{{ moodLabel }}</h3>
+          <p class="mt-3 text-[15px] leading-relaxed text-slate-600">
             {{ moodDescription }}
           </p>
 
@@ -85,14 +91,14 @@
           </div>
         </article>
 
-        <article class="rounded-2xl bg-[#ff9800] p-6 text-center text-white shadow-[0_12px_30px_rgba(255,152,0,0.35)]">
+        <article class="rounded-2xl bg-[linear-gradient(160deg,#ff8d2a_0%,#ff6b35_100%)] p-6 text-center text-white shadow-[0_12px_30px_rgba(255,107,53,0.35)]">
           <van-icon name="star-o" size="28" />
-          <p class="mt-3 text-base font-medium">AI 深度分析</p>
-          <p class="mt-2 text-4xl font-bold leading-tight">{{ deepInsight }}</p>
+          <p class="mt-3 text-sm font-medium">AI 深度分析</p>
+          <p class="mt-2 text-[22px] font-bold leading-tight">{{ deepInsight }}</p>
         </article>
 
-        <article class="rounded-2xl border border-orange-500/5 bg-white p-5 shadow-sm">
-          <h4 class="text-2xl font-bold text-on-background">今日频率</h4>
+        <article class="rounded-2xl border border-orange-500/10 bg-white p-5 shadow-[0_6px_18px_rgba(20,27,43,0.06)]">
+          <h4 class="text-[22px] font-bold text-on-background">今日频率</h4>
           <div class="mt-5 flex h-32 items-end justify-between gap-2">
             <div
               v-for="(h, idx) in frequencyBars"
@@ -105,10 +111,19 @@
           <p class="mt-3 text-center text-sm text-slate-500">近6小时活跃度</p>
         </article>
 
-        <article class="rounded-2xl border border-orange-500/5 bg-white p-5 shadow-sm">
-          <div class="mb-4 flex items-center justify-between">
-            <h4 class="text-2xl font-bold text-on-background">历史足迹</h4>
-            <button type="button" class="text-base font-bold text-[#ff9800]" @click="router.push({ name: 'Emotions' })">查看全部</button>
+        <article class="rounded-2xl border border-orange-500/10 bg-white p-5 shadow-[0_6px_18px_rgba(20,27,43,0.06)]">
+          <div class="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h4 class="text-[22px] font-bold text-on-background">历史足迹</h4>
+              <p class="mt-1 text-sm text-slate-500">音频记录和情绪翻译都在这里</p>
+            </div>
+            <button
+              type="button"
+              class="rounded-full bg-[#fff2e8] px-4 py-2 text-sm font-bold text-[#ff9800]"
+              @click="router.push({ name: 'AudioHistory' })"
+            >
+              查看全部音频
+            </button>
           </div>
 
           <div v-if="records.length === 0" class="rounded-xl bg-surface-container-low p-4 text-sm text-on-surface-variant">
@@ -200,7 +215,7 @@ const formatAge = (ageInMonths: number) => {
 const selectedCatHint = computed(() => {
   const id = currentCatStore.getCurrentCatId;
   if (!id) {
-    return cats.value[0] ? '未选择（可点击设置）' : '未选择（请先添加猫咪）';
+    return cats.value[0] ? '暂未选择，点击下方切换猫咪' : '未选择（请先添加猫咪）';
   }
   const cat = catsStore.getCatById(id);
   return cat ? `${cat.name} · ${cat.breed || '未填写品种'} · ${formatAge(cat.age)}` : '未选择（当前猫咪不存在）';

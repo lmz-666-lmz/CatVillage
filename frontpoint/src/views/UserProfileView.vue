@@ -13,40 +13,35 @@
     </header>
 
     <section class="mt-6 text-center">
-      <div class="relative mx-auto h-28 w-28">
-        <van-uploader
-          v-model="avatarList"
-          :max-count="1"
-          :preview-image="false"
-          :after-read="onAvatarRead"
-          class="h-full w-full"
-        >
+      <button type="button" class="mx-auto block" @click="openSettings">
+        <div class="relative mx-auto h-28 w-28">
           <div class="h-full w-full overflow-hidden rounded-full border-4 border-white bg-surface-container-high shadow-md grid place-items-center">
-            <van-image v-if="avatarUrl" :src="avatarUrl" fit="cover" width="112" height="112" />
-            <span v-else class="text-4xl">👤</span>
+            <van-image :src="avatarUrl" fit="cover" width="112" height="112" />
           </div>
-        </van-uploader>
-        <div class="absolute bottom-1 right-0 grid h-11 w-11 place-items-center rounded-full border-2 border-white bg-[#ff6b35] text-white shadow-md">
-          <van-icon name="paw-o" size="18" />
+          <div class="absolute bottom-1 right-0 grid h-11 w-11 place-items-center rounded-full border-2 border-white bg-[#ff6b35] text-white shadow-md">
+            <van-icon name="edit" size="18" />
+          </div>
         </div>
-      </div>
 
-      <h2 class="mt-4 text-[34px] font-black tracking-tight text-[#12182a]">{{ nickname || '橘猫村长' }}</h2>
-      <p class="mt-2 text-[20px] text-[#594139]">{{ bio || '村里的一只普通巡逻官 🐾' }}</p>
+        <h2 class="mt-4 text-[26px] font-black tracking-tight text-[#12182a]">{{ nickname }}</h2>
+        <p class="mt-2 text-[14px] text-[#7d7774]">点击头像或用户名修改资料</p>
+      </button>
+      <p class="mt-2 text-[14px] text-[#837c78]">喵村号：{{ miaoId }}</p>
+      <p class="mt-2 text-[16px] text-[#594139]">{{ bio || '村里的一只普通巡逻官 🐾' }}</p>
     </section>
 
     <section class="mt-6 rounded-[18px] bg-white px-3 py-4 shadow-sm">
       <div class="grid grid-cols-3 divide-x divide-slate-200 text-center">
         <div>
-          <div class="text-[28px] font-extrabold text-[#12182a]">1.2k</div>
+          <div class="text-[28px] font-extrabold text-[#12182a]">{{ formatCount(stats.following) }}</div>
           <div class="mt-1 text-[18px] text-[#594139]">关注</div>
         </div>
         <div>
-          <div class="text-[28px] font-extrabold text-[#12182a]">5.8k</div>
+          <div class="text-[28px] font-extrabold text-[#12182a]">{{ formatCount(stats.followers) }}</div>
           <div class="mt-1 text-[18px] text-[#594139]">粉丝</div>
         </div>
         <div>
-          <div class="text-[28px] font-extrabold text-[#12182a]">12.4k</div>
+          <div class="text-[28px] font-extrabold text-[#12182a]">{{ formatCount(stats.likes) }}</div>
           <div class="mt-1 text-[18px] text-[#594139]">获赞</div>
         </div>
       </div>
@@ -54,8 +49,8 @@
 
     <section class="mt-6 grid grid-cols-2 gap-3.5">
       <button type="button" class="rounded-[18px] bg-[#f7d8cf] p-5 text-left" @click="goMyCats">
-        <div class="text-2xl text-[#7b2400]">
-          <van-icon name="paw-o" size="30" />
+        <div class="text-2xl">
+          <van-icon name="paw-o" size="36" color="#b33500" />
         </div>
         <div class="mt-7 text-[26px] font-extrabold text-[#7b2400]">我的萌宠</div>
         <div class="mt-2 text-[17px] text-[#a55a46]">{{ catsCountText }}</div>
@@ -97,8 +92,8 @@
 
         <button type="button" class="flex w-full items-center justify-between border-t border-slate-100 px-4 py-4 text-left" @click="openHealthArchive">
           <div class="flex items-center gap-3">
-            <div class="grid h-11 w-11 place-items-center rounded-xl bg-blue-50">
-              <van-icon name="medical-o" color="#3b82f6" />
+            <div class="grid h-11 w-11 place-items-center rounded-xl" style="background-color: #e0f2fe;">
+              <van-icon name="medical-o" color="#0284c7" size="22" />
             </div>
             <div>
               <div class="text-[24px] font-bold text-[#12182a]">健康档案</div>
@@ -108,14 +103,14 @@
           <van-icon name="arrow" color="#b0a8a5" />
         </button>
 
-        <button type="button" class="flex w-full items-center justify-between border-t border-slate-100 px-4 py-4 text-left" @click="openAdoption">
+        <button type="button" class="flex w-full items-center justify-between border-t border-slate-100 px-4 py-4 text-left" @click="openFeedingRecord">
           <div class="flex items-center gap-3">
             <div class="grid h-11 w-11 place-items-center rounded-xl bg-purple-50">
-              <van-icon name="gift-o" color="#a855f7" />
+              <van-icon name="shop-o" color="#a855f7" />
             </div>
             <div>
-              <div class="text-[24px] font-bold text-[#12182a]">领养信息</div>
-              <div class="text-[16px] text-[#594139]">寻找温暖的家</div>
+              <div class="text-[24px] font-bold text-[#12182a]">投喂记录</div>
+              <div class="text-[16px] text-[#594139]">记录口味偏好与每日食量</div>
             </div>
           </div>
           <van-icon name="arrow" color="#b0a8a5" />
@@ -133,110 +128,85 @@
       </div>
     </section>
 
-    <van-form class="mt-5" @submit="onSubmit">
-      <section class="mt-4 hidden">
-        <van-cell-group inset>
-          <van-field
-            v-model="nickname"
-            name="nickname"
-            label="昵称"
-            placeholder="请输入昵称"
-            :rules="[{ required: true, message: '请输入昵称' }]"
-          />
+    <div class="mt-6 space-y-3">
+      <button
+        type="button"
+        class="h-11 w-full rounded-[10px] bg-primary text-on-primary font-semibold shadow-cta active:scale-[0.99]"
+        @click="openSettings"
+      >
+        编辑个人资料
+      </button>
 
-          <van-field
-            v-model="gender"
-            name="gender"
-            label="性别"
-            readonly
-            is-link
-            placeholder="请选择"
-            @click="showGenderPicker = true"
-          />
-
-          <van-field
-            v-model="bio"
-            name="bio"
-            label="简介"
-            type="textarea"
-            rows="3"
-            autosize
-            placeholder="简单介绍一下你和你的萌宠..."
-          />
-        </van-cell-group>
-      </section>
-
-      <div class="mt-4 space-y-3">
-        <button
-          type="submit"
-          class="h-11 w-full rounded-[10px] bg-primary text-on-primary font-semibold shadow-cta active:scale-[0.99]"
-        >
-          保存资料
-        </button>
-
-        <button
-          type="button"
-          class="h-11 w-full rounded-[10px] border border-outline-variant bg-surface-container-lowest text-on-background font-semibold active:scale-[0.99]"
-          @click="logout"
-        >
-          退出登录
-        </button>
-      </div>
-    </van-form>
-
-    <van-action-sheet v-model:show="showGenderPicker" title="选择性别">
-      <div class="p-4 space-y-2">
-        <van-button block type="primary" @click="setGender('女')">女</van-button>
-        <van-button block type="primary" plain @click="setGender('男')">男</van-button>
-      </div>
-    </van-action-sheet>
+      <button
+        type="button"
+        class="h-11 w-full rounded-[10px] border border-outline-variant bg-surface-container-lowest text-on-background font-semibold active:scale-[0.99]"
+        @click="logout"
+      >
+        退出登录
+      </button>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { closeToast, showToast } from 'vant';
-import type { UploaderFileListItem } from 'vant';
+import { showToast } from 'vant';
 import { useCatsStore } from '@/stores';
+import { getUserDisplayProfile } from '@/utils/userProfile';
+import { useMessaging } from '@/composables/useMessaging';
+import { useSocialFeatures } from '@/composables/useSocialFeatures';
 
 const router = useRouter();
 const catsStore = useCatsStore();
+const { fetchFollowerList, fetchFriendList } = useMessaging();
+const { fetchMyDynamicsList } = useSocialFeatures();
 
-const avatarList = ref<UploaderFileListItem[]>([]);
 const avatarUrl = ref('');
 const nickname = ref('');
-const gender = ref<'男' | '女'>('女');
+const miaoId = ref('');
 const bio = ref('');
-const showGenderPicker = ref(false);
+const stats = ref({ following: 0, followers: 0, likes: 0 });
 
 const catsCountText = computed(() => `${Math.max(catsStore.getAllCats.length, 0)}只毛孩子已上线`);
 
-const onAvatarRead = (file: UploaderFileListItem | UploaderFileListItem[]) => {
-  const fileItem = Array.isArray(file) ? file[0] : file;
-  if (!fileItem) {
-    return;
+const formatCount = (value: number) => {
+  if (value >= 10000) {
+    return `${(value / 10000).toFixed(1)}w`;
   }
-  if (typeof fileItem.content === 'string') {
-    avatarUrl.value = fileItem.content;
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}k`;
   }
+  return String(value);
 };
 
-const setGender = (value: '男' | '女') => {
-  gender.value = value;
-  showGenderPicker.value = false;
-};
+const loadProfileStats = async () => {
+  try {
+    const [followersRes, myDynamicsRes] = await Promise.all([
+      fetchFollowerList({ page: 1, pageSize: 50 }),
+      fetchMyDynamicsList({ page: 1, pageSize: 100 })
+    ]);
 
-const onSubmit = async () => {
-  if (!nickname.value.trim()) {
-    showToast({ type: 'fail', message: '请填写昵称' });
-    return;
+    const likes = (myDynamicsRes.list || []).reduce((sum, item) => sum + (item.likeCount || 0), 0);
+    stats.value.followers = followersRes.total || (followersRes.list || []).length;
+    stats.value.likes = likes;
+
+    let followingCount = 0;
+    let page = 1;
+    let total = Number.POSITIVE_INFINITY;
+    while ((page - 1) * 50 < total) {
+      const friendRes = await fetchFriendList({ page, pageSize: 50 });
+      total = friendRes.total || 0;
+      followingCount += (friendRes.list || []).filter((item) => item.isFollowing).length;
+      page += 1;
+      if (!(friendRes.list || []).length) {
+        break;
+      }
+    }
+    stats.value.following = followingCount;
+  } catch {
+    showToast({ message: '资料统计同步失败，已显示默认值' });
   }
-
-  showToast({ type: 'loading', message: '正在保存...', forbidClick: true, duration: 0 });
-  await new Promise((resolve) => setTimeout(resolve, 500));
-  closeToast();
-  showToast({ type: 'success', message: '已保存' });
 };
 
 const logout = () => {
@@ -252,22 +222,15 @@ const toggleThemeHint = () => {
 };
 
 const openSettings = () => {
-  showToast({ message: '设置中心即将上线' });
+  router.push({ name: 'Settings' });
 };
 
 const goMyCats = () => {
-  const firstCat = catsStore.getAllCats[0];
-  if (!firstCat) {
-    showToast({ type: 'fail', message: '请先添加猫咪档案' });
-    router.push({ name: 'AddCat' });
-    return;
-  }
-  router.push({ name: 'CatArchive', params: { id: firstCat.id } });
+  router.push({ name: 'MyPets' });
 };
 
 const goMyFavorites = () => {
-  router.push({ name: 'Social' });
-  showToast({ message: '已进入广场，可在详情页查看收藏状态' });
+  router.push({ name: 'MyFavorites' });
 };
 
 const goCreatePost = () => {
@@ -288,8 +251,14 @@ const openHealthArchive = () => {
   router.push({ name: 'CatArchive', params: { id: firstCat.id } });
 };
 
-const openAdoption = () => {
-  showToast({ message: '领养信息功能即将上线' });
+const openFeedingRecord = () => {
+  const firstCat = catsStore.getAllCats[0];
+  if (!firstCat) {
+    showToast({ type: 'fail', message: '请先添加猫咪档案' });
+    router.push({ name: 'AddCat' });
+    return;
+  }
+  router.push({ name: 'FeedRecord', query: { catId: firstCat.id } });
 };
 
 const openVip = () => {
@@ -297,6 +266,11 @@ const openVip = () => {
 };
 
 onMounted(() => {
+  const profile = getUserDisplayProfile();
+  avatarUrl.value = profile.avatarUrl;
+  nickname.value = profile.nickname;
+  miaoId.value = profile.miaoId;
   void catsStore.fetchAllCats();
+  void loadProfileStats();
 });
 </script>

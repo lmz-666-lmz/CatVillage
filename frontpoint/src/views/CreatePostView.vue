@@ -27,8 +27,11 @@
 
       <section class="mt-3 rounded-[18px] border border-[#e3e7f2] bg-white p-3.5">
         <div class="text-[14px] text-[#9a97a0]">发布身份</div>
-        <div class="mt-1 text-[15px] font-semibold text-[#12182a]">
-          {{ selectedCatName }}
+        <div class="mt-1 flex items-center gap-2">
+          <span class="text-xl">🐾</span>
+          <span class="text-[15px] font-semibold text-[#12182a]">
+            {{ selectedCatName }}
+          </span>
         </div>
         <div v-if="!hasCats" class="mt-3 text-sm text-on-surface-variant">
           需要先添加一只猫咪档案才能发布动态。

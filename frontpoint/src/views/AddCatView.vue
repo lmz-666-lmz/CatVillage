@@ -27,10 +27,10 @@
         <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
         <button
           type="button"
-          class="relative grid h-[206px] w-[206px] place-items-center overflow-hidden bg-[#ececf3]"
+          class="relative grid h-[160px] w-[160px] place-items-center overflow-hidden bg-[#ececf3]"
           @click="openAvatarPicker"
         >
-          <div class="relative h-[166px] w-[166px] overflow-hidden rounded-full border-[5px] border-white shadow-sm">
+          <div class="relative h-[130px] w-[130px] overflow-hidden rounded-full border-[4px] border-white shadow-sm">
             <img
               v-if="avatarPreviewUrl"
               :src="avatarPreviewUrl"
@@ -68,7 +68,7 @@
             v-model="form.name"
             type="text"
             placeholder="输入超可爱的名字"
-            class="h-[58px] w-full rounded-[20px] border border-[#dbe2f4] bg-white px-6 text-[14px] text-on-background outline-none placeholder:text-[#8f9aab]"
+            class="h-12 w-full rounded-[20px] border border-[#dbe2f4] bg-white px-6 text-[14px] text-on-background outline-none placeholder:text-[#8f9aab]"
           />
         </div>
 
@@ -77,7 +77,7 @@
           <div class="relative">
             <select
               v-model="form.breed"
-              class="h-[58px] w-full appearance-none rounded-[20px] border border-[#dbe2f4] bg-white px-6 pr-14 text-[14px] text-on-background outline-none"
+              class="h-12 w-full appearance-none rounded-[20px] border border-[#dbe2f4] bg-white px-6 pr-14 text-[14px] text-on-background outline-none"
             >
               <option disabled value="">选择猫咪品种</option>
               <option v-for="option in breedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
@@ -154,7 +154,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { closeToast, showToast } from 'vant';
 import { useCatManagement } from '@/composables/useCatManagement';
-import { useCatsStore } from '@/stores';
+import { useCatsStore, useCurrentCatStore } from '@/stores';
 import type { CreateCatProfileRequest } from '@/types/cat';
 import { CAT_BREED_OPTIONS } from '@/constants/catBreeds';
 
@@ -168,6 +168,7 @@ interface AddCatFormState {
 const router = useRouter();
 const { createCat } = useCatManagement();
 const catsStore = useCatsStore();
+const currentCatStore = useCurrentCatStore();
 
 const saving = ref<boolean>(false);
 const avatarInputRef = ref<HTMLInputElement | null>(null);
@@ -296,10 +297,15 @@ const onSave = async (): Promise<void> => {
 
   try {
     // 复用现有 composable：会调用 Pinia + API 并同步本地列表
-    await createCat(payload);
+    const createdCat = await createCat(payload);
     closeToast();
     showToast({ type: 'success', message: '猫咪档案创建成功' });
-    router.replace({ name: 'Cats' });
+    if (createdCat?.id) {
+      currentCatStore.setCurrentCat(createdCat.id);
+      router.replace({ name: 'CatArchive', params: { id: createdCat.id } });
+      return;
+    }
+    router.replace({ name: 'MyPets' });
   } catch {
     closeToast();
     showToast({ type: 'fail', message: '创建失败，请稍后再试' });

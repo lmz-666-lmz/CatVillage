@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.dependencies import get_current_user
 from app.database.session import get_db
 from app.models.message import Message
+from app.models.social import SocialFollow
 from app.models.user import User
 from app.schemas.message import QuickMeowRequest, SendMessageRequest, UpdateReadStatusRequest
 
@@ -25,7 +26,7 @@ def _serialize_message(message: Message) -> dict:
     }
 
 
-def _serialize_friend(user: User) -> dict:
+def _serialize_friend(user: User, is_following: bool = False) -> dict:
     return {
         "id": user.id,
         "userId": user.id,
@@ -34,6 +35,7 @@ def _serialize_friend(user: User) -> dict:
         "avatar": "",
         "lastOnlineAt": "",
         "isOnline": False,
+        "isFollowing": is_following,
     }
 
 
@@ -41,10 +43,17 @@ def _serialize_friend(user: User) -> dict:
 def get_friend_list(
     page: int = Query(1, ge=1),
     pageSize: int = Query(10, ge=1),
+    keyword: str | None = Query(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     query = db.query(User).filter(User.id != current_user.id)
+
+    if keyword:
+                keyword_trimmed = keyword.strip()
+                if keyword_trimmed:
+                        query = query.filter(User.username.like(f"%{keyword_trimmed}%"))
+
     total = query.count()
     # SQL Server requires ORDER BY when OFFSET/LIMIT (FETCH NEXT) is used.
     items = (
@@ -54,11 +63,24 @@ def get_friend_list(
         .all()
     )
 
+    following_ids: set[str] = set()
+    user_ids = [item.id for item in items]
+    if user_ids:
+        following_rows = (
+            db.query(SocialFollow.followed_user_id)
+            .filter(
+                SocialFollow.follower_id == current_user.id,
+                SocialFollow.followed_user_id.in_(user_ids),
+            )
+            .all()
+        )
+        following_ids = {user_id for (user_id,) in following_rows}
+
     return {
         "code": 200,
         "msg": "success",
         "data": {
-            "list": [_serialize_friend(item) for item in items],
+            "list": [_serialize_friend(item, item.id in following_ids) for item in items],
             "total": total,
         },
     }

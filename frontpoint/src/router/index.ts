@@ -5,6 +5,16 @@ import type { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/',
+    redirect: '/welcome'
+  },
+  {
+    path: '/welcome',
+    name: 'Welcome',
+    component: () => import('../views/WelcomeView.vue'),
+    meta: { title: '欢迎', hideTabbar: true }
+  },
+  {
+    path: '/home',
     name: 'Home',
     component: () => import('../views/SocialView.vue'),
     meta: { title: '社交广场', requiresAuth: true }
@@ -86,6 +96,12 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '消息中心', requiresAuth: true }
   },
   {
+    path: '/messages/add-friend',
+    name: 'AddFriend',
+    component: () => import('../views/AddFriendView.vue'),
+    meta: { title: '添加好友', requiresAuth: true }
+  },
+  {
     path: '/messages/chat/:targetUserId',
     name: 'ChatDetail',
     component: () => import('../views/ChatDetailView.vue'),
@@ -105,10 +121,82 @@ const routes: RouteRecordRaw[] = [
     meta: { title: 'AI助理', requiresAuth: true }
   },
   {
+    path: '/doctors',
+    name: 'ProfessionalDoctors',
+    component: () => import('../views/ProfessionalDoctorsView.vue'),
+    meta: { title: '专业医生', requiresAuth: true, hideTabbar: true }
+  },
+  {
     path: '/profile',
     name: 'UserProfile',
     component: () => import('../views/UserProfileView.vue'),
     meta: { title: '个人资料', requiresAuth: true }
+  },
+  {
+    path: '/profile/favorites',
+    name: 'MyFavorites',
+    component: () => import('../views/MyFavoritesView.vue'),
+    meta: { title: '我的收藏', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/my-pets',
+    name: 'MyPets',
+    component: () => import('../views/MyPetsView.vue'),
+    meta: { title: '我的萌宠', requiresAuth: true }
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/SettingsView.vue'),
+    meta: { title: '系统设置', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/account',
+    name: 'SettingsAccount',
+    component: () => import('../views/SettingsAccountView.vue'),
+    meta: { title: '账号与安全', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/notification',
+    name: 'SettingsNotification',
+    component: () => import('../views/SettingsNotificationView.vue'),
+    meta: { title: '通知设置', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/privacy',
+    name: 'SettingsPrivacy',
+    component: () => import('../views/SettingsPrivacyView.vue'),
+    meta: { title: '隐私设置', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/history',
+    name: 'SettingsHistory',
+    component: () => import('../views/SettingsHistoryView.vue'),
+    meta: { title: '浏览历史', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/about',
+    name: 'SettingsAbout',
+    component: () => import('../views/SettingsAboutView.vue'),
+    meta: { title: '关于猫村', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/policy',
+    name: 'SettingsPolicy',
+    component: () => import('../views/SettingsPolicyView.vue'),
+    meta: { title: '隐私协议与条款', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/cats/audio-history',
+    name: 'AudioHistory',
+    component: () => import('../views/AudioHistoryView.vue'),
+    meta: { title: '全部音频记录', requiresAuth: true }
+  },
+  {
+    path: '/feeding',
+    name: 'FeedRecord',
+    component: () => import('../views/FeedRecordView.vue'),
+    meta: { title: '投喂记录', requiresAuth: true }
   },
   {
     path: '/:pathMatch(.*)*',

@@ -4,6 +4,7 @@ import { ref, computed } from 'vue';
 import type { 
   ChatWithAIRequest, 
   ChatWithAIResponse, 
+  ChatHistoryEntry,
   ChatHistoryRequest,
   EmergencyHelpRequest,
 } from '@/types/aiAssistant';
@@ -22,6 +23,36 @@ export function useAIAssistant() {
   const loading = ref(false);
   const error = ref<string | null>(null);
   const chatHistory = ref<ChatWithAIResponse[]>([]);
+
+  const normalizeHistory = (list: ChatHistoryEntry[]): ChatWithAIResponse[] => {
+    const messages: ChatWithAIResponse[] = [];
+
+    list.forEach((entry) => {
+      const baseTs = entry.created_at || new Date().toISOString();
+
+      if (entry.question) {
+        messages.push({
+          id: `${entry.id}-q`,
+          sessionId: entry.pet_id,
+          message: entry.question,
+          role: 'user',
+          timestamp: baseTs
+        });
+      }
+
+      if (entry.answer) {
+        messages.push({
+          id: `${entry.id}-a`,
+          sessionId: entry.pet_id,
+          message: entry.answer,
+          role: 'assistant',
+          timestamp: baseTs
+        });
+      }
+    });
+
+    return messages;
+  };
 
   /**
    * 发起AI对话
@@ -53,7 +84,7 @@ export function useAIAssistant() {
 
     try {
       const response = await getChatHistory(params);
-      chatHistory.value = response.data.list || [];
+      chatHistory.value = normalizeHistory(response.data.list || []);
       return response.data;
     } catch (err: any) {
       error.value = err.message || '获取对话历史失败';

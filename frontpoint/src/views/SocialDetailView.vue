@@ -30,7 +30,7 @@
 
     <section v-else-if="detail" class="pb-4">
       <div class="relative bg-black">
-        <van-image :src="detail.images?.[0] || fallbackImage" fit="cover" width="100%" height="300" />
+          <van-image :src="detail.images?.[0] || fallbackImage" fit="cover" width="100%" height="260" />
         <div class="absolute right-3 top-3 rounded-full bg-black/40 px-2 py-1 text-[12px] text-white">1/{{ detail.images?.length || 1 }}</div>
       </div>
 
@@ -136,6 +136,7 @@ import { useRouter } from 'vue-router';
 import { closeToast, showConfirmDialog, showToast } from 'vant';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
 import { formatRelativeTime } from '@/utils/date';
+import { applyDisplayProfileToDynamic, getUserDisplayProfile } from '@/utils/userProfile';
 import type { CommentResponse, SocialDynamic } from '@/types/social';
 
 const props = defineProps<{ id: string }>();
@@ -167,12 +168,13 @@ const fallbackAvatar = 'https://fastly.jsdelivr.net/npm/@vant/assets/cat.jpeg';
 const fallbackImage = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=1200&q=80';
 
 const normalizeComments = (input: unknown) => {
+  const profile = getUserDisplayProfile();
   if (!Array.isArray(input)) {
     return [] as CommentResponse[];
   }
   return input.map((item, idx) => {
     const row = item as Record<string, unknown>;
-    return {
+    const normalized = {
       id: String(row.id || `tmp-${idx}`),
       userId: String(row.userId || ''),
       username: String(row.username || '猫村用户'),
@@ -183,7 +185,13 @@ const normalizeComments = (input: unknown) => {
       likeCount: Number(row.likeCount || 0),
       isLiked: Boolean(row.isLiked || false),
       isOwner: Boolean(row.isOwner || false)
-    };
+    } as CommentResponse;
+
+    if (normalized.isOwner) {
+      normalized.username = profile.nickname;
+      normalized.avatar = profile.avatarUrl;
+    }
+    return normalized;
   });
 };
 
@@ -203,7 +211,7 @@ const loadDetail = async () => {
   error.value = null;
   try {
     const data = await fetchDynamicDetail(props.id);
-    detail.value = data;
+    detail.value = applyDisplayProfileToDynamic(data);
     const raw = data as unknown as Record<string, unknown>;
     comments.value = normalizeComments(raw.comments);
   } catch {
@@ -298,13 +306,15 @@ const submitComment = async () => {
   showToast({ type: 'loading', message: '发送中...', duration: 0, forbidClick: true });
   try {
     const res = await postNewComment(detail.value.id, { dynamicId: detail.value.id, content: text });
+    const profile = getUserDisplayProfile();
+    const ownerComment = Boolean(res.isOwner);
     comments.value = [
       ...comments.value,
       {
         id: res.id,
         userId: res.userId,
-        username: res.username,
-        avatar: res.avatar,
+        username: ownerComment ? profile.nickname : res.username,
+        avatar: ownerComment ? profile.avatarUrl : res.avatar,
         dynamicId: res.dynamicId,
         content: res.content,
         createdAt: res.createdAt,

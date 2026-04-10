@@ -10,3 +10,6 @@ export * from './helpers';
 
 // 导出验证工具函数
 export * from './validators';
+
+// 导出用户展示资料工具函数
+export * from './userProfile';

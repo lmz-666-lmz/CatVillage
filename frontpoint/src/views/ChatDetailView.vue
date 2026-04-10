@@ -12,7 +12,9 @@
           </div>
           <div class="mt-0.5 text-[12px] text-[#35c35a]">● 在线</div>
         </div>
-        <div class="w-10"></div>
+        <button type="button" class="grid h-10 w-10 place-items-center text-[#ff6b35]" @click="showMeowCardSheet = true">
+          <van-icon name="plus" size="20" />
+        </button>
       </div>
     </header>
 
@@ -54,8 +56,18 @@
                     <div class="text-[15px] font-bold text-[#323237]">{{ resolveMeowCard(msg)?.name }}</div>
                     <div class="text-[12px] text-[#8d8580]">{{ resolveMeowCard(msg)?.breed }} · {{ resolveMeowCard(msg)?.ageText }}</div>
                   </div>
+                </div>                <div class="mt-2 rounded-[10px] bg-[#fff1e8] px-2.5 py-2">
+                  <div class="text-[12px] font-semibold text-[#8d5b40]">基本信息</div>
+                  <div class="mt-1 text-[12px] text-[#6f625c]">性别：{{ resolveMeowCard(msg)?.genderText || '未知' }}</div>
+                  <div class="mt-0.5 text-[12px] text-[#6f625c]">体重：{{ resolveMeowCard(msg)?.recentWeightText || '暂无' }}</div>
+                  <div class="mt-0.5 text-[12px] text-[#6f625c]">疫苗：{{ resolveMeowCard(msg)?.vaccineStatus || '暂无' }}</div>
+                  <div v-if="resolveMeowCard(msg)?.medicalHistory" class="mt-0.5 text-[12px] text-[#6f625c]">病史：{{ resolveMeowCard(msg)?.medicalHistory }}</div>
                 </div>
-                <button
+                <div class="mt-2 rounded-[10px] bg-[#ffeae3] px-2.5 py-2">
+                  <div class="text-[12px] font-semibold text-[#8d5b40]">最近情绪</div>
+                  <div class="mt-1 text-[12px] text-[#6f625c]">{{ resolveMeowCard(msg)?.recentMood || '暂无' }}</div>
+                  <div v-if="resolveMeowCard(msg)?.recentNote" class="mt-0.5 line-clamp-2 text-[12px] text-[#7a6c66]">{{ resolveMeowCard(msg)?.recentNote }}</div>
+                </div>                <button
                   type="button"
                   class="mt-2 flex w-full items-center justify-between rounded-[10px] px-2 py-2 text-left text-[13px] text-[#6d6561]"
                   @click="openMeowCard(resolveMeowCard(msg))"
@@ -131,6 +143,8 @@ import { useMessaging } from '@/composables/useMessaging';
 import type { Message } from '@/types/message';
 import type { CatProfile } from '@/types/cat';
 import { useCatsStore } from '@/stores';
+import { getEmotionRecords } from '@/api/emotion';
+import { getWeightRecords } from '@/api/health';
 
 const props = defineProps<{ targetUserId: string }>();
 const route = useRoute();
@@ -211,6 +225,14 @@ interface MeowCardPayload {
   ageText: string;
   weight?: number;
   avatarUrl?: string;
+  gender?: number;
+  genderText?: string;
+  vaccineStatus?: string;
+  medicalHistory?: string;
+  neutered?: boolean;
+  recentMood?: string;
+  recentWeightText?: string;
+  recentNote?: string;
 }
 
 const toAgeText = (ageMonths?: number) => {
@@ -232,15 +254,55 @@ const formatWeight = (weight?: number) => {
   return `${weight}kg`;
 };
 
-const buildMeowCardContent = (cat: CatProfile) => {
+const formatDateLabel = (value?: string) => {
+  if (!value) {
+    return '';
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+  return `${date.getMonth() + 1}/${date.getDate()}`;
+};
+
+const buildMeowCardContent = async (cat: CatProfile) => {
+  const genderText = cat.gender === 1 ? '公猫' : cat.gender === 0 ? '母猫' : '未知';
   const payload: MeowCardPayload = {
     id: cat.id,
     name: cat.name,
     breed: cat.breed,
     ageText: toAgeText(cat.age),
     weight: cat.weight,
-    avatarUrl: cat.avatarUrl
+    avatarUrl: cat.avatarUrl,
+    gender: cat.gender,
+    genderText,
+    vaccineStatus: cat.vaccineStatus,
+    medicalHistory: cat.medicalHistory,
+    neutered: cat.isNeutered,
+    recentWeightText: formatWeight(cat.weight)
   };
+
+  const [emotionRes, weightRes] = await Promise.allSettled([
+    getEmotionRecords({ page: 1, pageSize: 1, catId: cat.id }),
+    getWeightRecords({ petId: cat.id, page: 1, pageSize: 1 })
+  ]);
+
+  if (emotionRes.status === 'fulfilled') {
+    const latestEmotion = emotionRes.value.data.list?.[0];
+    if (latestEmotion) {
+      payload.recentMood = latestEmotion.emotionTag || '平稳';
+      payload.recentNote = latestEmotion.emotionDescription || '';
+    }
+  }
+
+  if (weightRes.status === 'fulfilled') {
+    const latestWeight = weightRes.value.data.list?.[0];
+    if (latestWeight) {
+      const dateLabel = formatDateLabel(latestWeight.recordDate);
+      payload.recentWeightText = `${latestWeight.weight}kg${dateLabel ? `（${dateLabel}）` : ''}`;
+    }
+  }
+
   return `MEOW_CARD:${JSON.stringify(payload)}`;
 };
 
@@ -284,7 +346,7 @@ const sendMeowCard = async (cat: CatProfile) => {
   try {
     const sent = await sendNewMessage({
       receiverId: targetUserId.value,
-      content: buildMeowCardContent(cat),
+      content: await buildMeowCardContent(cat),
       messageType: 'quick_meow'
     });
     messages.value = [...messages.value, sent];

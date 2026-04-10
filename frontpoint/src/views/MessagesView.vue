@@ -14,10 +14,7 @@
             <van-icon name="search" />
             <span class="text-[14px]">搜索聊天记录</span>
           </div>
-          <button type="button" class="text-[#594139]">
-            <van-icon name="bell" size="20" />
-          </button>
-          <button type="button" class="text-[#ff6b35]">
+          <button type="button" class="text-[#ff6b35]" @click="router.push({ name: 'AddFriend' })">
             <van-icon name="plus" size="20" />
           </button>
         </div>
@@ -59,7 +56,7 @@
             @click="openConversation(conv)"
           >
             <div class="relative">
-              <van-image :src="conv.avatar" fit="cover" width="54" height="54" round />
+              <van-image :src="conv.avatar || defaultAvatar" fit="cover" width="54" height="54" round />
               <div v-if="conv.isOnline" class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#32c65f]"></div>
             </div>
             <div class="min-w-0 flex-1">
@@ -134,7 +131,6 @@
               <div class="truncate text-[17px] font-bold text-[#12182a]">{{ friend.nickname }}</div>
               <div class="mt-0.5 truncate text-[14px] text-[#6f6662]">点击开始聊天</div>
             </div>
-            <van-icon name="arrow" class="text-[#9a9798]" />
           </article>
 
           <div v-if="fans.length === 0" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center text-sm text-on-surface-variant">
@@ -268,7 +264,7 @@ const openConversation = (conv: Conversation) => {
   router.push({
     name: 'ChatDetail',
     params: { targetUserId: conv.targetUserId },
-    query: { nickname: conv.nickname, avatar: conv.avatar }
+    query: { nickname: conv.nickname, avatar: conv.avatar || defaultAvatar }
   });
 };
 

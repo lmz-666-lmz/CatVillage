@@ -122,7 +122,7 @@
             </div>
 
             <div v-if="item.catName" class="truncate text-[14px] text-[#2f2521] max-w-[120px]">
-              🎵 {{ item.catName }}...
+              🐾 {{ item.catName }}
             </div>
           </div>
         </article>
@@ -159,6 +159,7 @@ import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
 import { formatRelativeTime } from '@/utils/date';
+import { applyDisplayProfileToDynamic } from '@/utils/userProfile';
 import type { SocialDynamic } from '@/types/social';
 
 const router = useRouter();
@@ -202,7 +203,7 @@ const refresh = async () => {
   error.value = null;
   try {
     const res = await fetchDynamicsList({ page: 1, pageSize, scope: activeTab.value === 'follow' ? 'following' : 'all' });
-    dynamics.value = res.list || [];
+    dynamics.value = (res.list || []).map((item) => applyDisplayProfileToDynamic(item));
     currentPage.value = 1;
     hasMore.value = dynamics.value.length < (res.total || 0);
   } catch (err: unknown) {
@@ -225,7 +226,7 @@ const loadMore = async () => {
   try {
     const nextPage = currentPage.value + 1;
     const res = await fetchDynamicsList({ page: nextPage, pageSize, scope: activeTab.value === 'follow' ? 'following' : 'all' });
-    const list = res.list || [];
+    const list = (res.list || []).map((item) => applyDisplayProfileToDynamic(item));
     dynamics.value = [...dynamics.value, ...list];
     currentPage.value = nextPage;
     hasMore.value = dynamics.value.length < (res.total || 0);

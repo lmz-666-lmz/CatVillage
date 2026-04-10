@@ -1,83 +1,105 @@
 <template>
-  <div class="px-6 pt-6 pb-6">
-    <van-nav-bar title="编辑猫咪" left-arrow @click-left="router.back()" />
+  <div class="min-h-[100dvh] bg-[#f4f5fb] px-5 pt-4 pb-8">
+    <header class="sticky top-0 z-20 -mx-5 flex items-center justify-between bg-[#f4f5fb]/95 px-5 py-3 backdrop-blur">
+      <button type="button" class="grid h-10 w-10 place-items-center text-[#837974]" @click="router.back()">
+        <van-icon name="arrow-left" size="20" />
+      </button>
+      <h1 class="text-[32px] font-extrabold tracking-tight text-[#1f2431]">编辑猫咪</h1>
+      <div class="h-10 w-10"></div>
+    </header>
 
-    <div v-if="loading" class="py-10 text-center">
-      <van-loading size="24" />
-      <div class="mt-3 text-sm text-on-surface-variant">正在加载档案...</div>
+    <div v-if="loading" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <van-loading size="20" />
+      <div class="mt-3">正在加载猫咪档案...</div>
     </div>
 
-    <div v-else-if="error" class="mt-6 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center">
-      <div class="text-3xl">⚠️</div>
-      <div class="mt-3 text-base font-semibold text-on-background">档案加载失败</div>
-      <div class="mt-1 text-sm text-on-surface-variant">{{ error }}</div>
-      <van-button class="mt-5" block type="primary" @click="reload">重试</van-button>
+    <div v-else-if="error" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">组件加载失败</div>
+      <div class="mt-2">{{ error }}</div>
+      <van-button class="mt-4" type="primary" @click="reload">重试</van-button>
     </div>
 
-    <div v-else-if="!cat" class="mt-6 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-6 text-center">
-      <div class="text-3xl">😿</div>
-      <div class="mt-3 text-base font-semibold text-on-background">未找到猫咪档案</div>
-      <div class="mt-1 text-sm text-on-surface-variant">可能已被删除或本地缓存过期</div>
-      <van-button class="mt-5" block type="primary" @click="router.replace({ name: 'Cats' })">返回列表</van-button>
+    <div v-else-if="!cat" class="rounded-2xl border border-surface-container-high bg-surface-container-lowest px-4 py-10 text-center text-sm text-on-surface-variant">
+      <div class="text-base font-semibold text-on-background">未找到猫咪档案</div>
+      <div class="mt-2">可能已被删除或数据未同步</div>
+      <van-button class="mt-4" type="primary" @click="router.replace({ name: 'MyPets' })">返回我的萌宠</van-button>
     </div>
 
     <template v-else>
-      <section class="mt-4 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
+      <section class="mt-4 rounded-[20px] border border-[#dbe2f4] bg-white p-4">
         <div class="flex items-center gap-4">
           <input ref="avatarInputRef" type="file" accept="image/*" class="hidden" @change="onAvatarChange" />
           <button
             type="button"
-            class="h-16 w-16 overflow-hidden rounded-2xl border border-surface-container-high bg-surface-container-high grid place-items-center"
+            class="grid h-[94px] w-[94px] place-items-center overflow-hidden rounded-[24px] bg-[#dbe2f6]"
             @click="openAvatarPicker"
           >
             <img v-if="avatarPreviewUrl" :src="avatarPreviewUrl" class="h-full w-full object-cover" alt="猫咪头像" />
-            <van-icon v-else name="photo-o" size="24" class="text-on-surface-variant" />
+            <van-icon v-else name="photo-o" size="30" class="text-[#5e6b86]" />
           </button>
-          <div class="min-w-0 flex-1">
-            <div class="text-sm font-semibold text-on-background">头像</div>
-            <div class="mt-1 text-xs text-on-surface-variant">点击左侧图片上传</div>
+          <div>
+            <div class="text-[40px] font-black text-[#12182a]">头像</div>
+            <div class="mt-1 text-[18px] text-[#594139]">点击左侧图片上传</div>
           </div>
         </div>
       </section>
 
-      <section class="mt-4">
-        <van-cell-group inset>
-          <van-field v-model="form.name" name="name" label="名字" placeholder="请输入猫咪名字" />
+      <section class="mt-5 rounded-[18px] border border-[#dbe2f4] bg-white px-5 py-1 shadow-[0_2px_10px_rgba(25,42,70,0.04)]">
+        <div class="divide-y divide-[#edf0f5]">
+          <div class="flex min-h-[70px] items-center gap-3">
+            <div class="w-[100px] shrink-0 text-[18px] font-medium text-[#1f2431]">名字</div>
+            <input
+              v-model="form.name"
+              type="text"
+              placeholder="请输入猫咪名字"
+              class="h-10 flex-1 bg-transparent text-[18px] text-[#12182a] outline-none placeholder:text-[#c2c8d4]"
+            />
+          </div>
 
-          <van-field name="breed" label="品种">
-            <template #input>
-              <select
-                v-model="form.breed"
-                class="h-8 w-full bg-transparent text-sm text-on-background outline-none"
-              >
+          <div class="flex min-h-[70px] items-center gap-3">
+            <div class="w-[100px] shrink-0 text-[18px] font-medium text-[#1f2431]">品种</div>
+            <div class="relative flex-1">
+              <select v-model="form.breed" class="h-10 w-full appearance-none bg-transparent pr-10 text-[18px] text-[#12182a] outline-none">
                 <option disabled value="">请选择</option>
                 <option v-for="option in breedOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
               </select>
-            </template>
-          </van-field>
+              <van-icon name="arrow-down" class="absolute right-1 top-1/2 -translate-y-1/2 text-[#7c879e]" />
+            </div>
+          </div>
 
-          <van-field
-            v-model="form.ageBirthdayText"
-            name="ageBirthdayText"
-            label="生日(月)"
-            placeholder="例如 2022-05"
-          />
+          <div class="flex min-h-[70px] items-center gap-3">
+            <div class="w-[100px] shrink-0 text-[18px] font-medium text-[#1f2431]">生日(月)</div>
+            <input
+              v-model="form.ageBirthdayText"
+              type="text"
+              placeholder="例如 2022-05"
+              class="h-10 flex-1 bg-transparent text-[18px] text-[#12182a] outline-none placeholder:text-[#c2c8d4]"
+            />
+          </div>
 
-          <van-field v-model="form.weightKg" name="weightKg" label="体重(kg)" placeholder="例如 4.5" type="number" />
-        </van-cell-group>
+          <div class="flex min-h-[70px] items-center gap-3">
+            <div class="w-[100px] shrink-0 text-[18px] font-medium text-[#1f2431]">体重(kg)</div>
+            <input
+              v-model="form.weightKg"
+              type="number"
+              placeholder="例如 4.5"
+              class="h-10 flex-1 bg-transparent text-[18px] text-[#12182a] outline-none placeholder:text-[#c2c8d4]"
+            />
+          </div>
+        </div>
       </section>
 
-      <section class="mt-4 rounded-2xl border border-surface-container-high bg-surface-container-lowest p-4">
-        <div class="text-sm font-semibold text-on-background">疫苗情况</div>
-        <div class="mt-3 flex flex-wrap gap-2">
+      <section class="mt-5 rounded-[20px] border border-[#dbe2f4] bg-white p-4">
+        <div class="text-[20px] font-bold text-[#12182a]">疫苗情况</div>
+        <div class="mt-4 flex flex-wrap gap-3">
           <button
             v-for="tag in vaccineTags"
             :key="tag"
             type="button"
-            class="px-4 py-2 rounded-full text-xs font-semibold transition-all active:scale-95"
+            class="rounded-full px-5 py-2 text-[14px] font-medium transition-all active:scale-95"
             :class="isVaccineSelected(tag)
-              ? 'bg-primary text-on-primary'
-              : 'bg-surface-container-high text-on-surface-variant'"
+              ? 'bg-[#bf3a00] text-white'
+              : 'bg-[#dfe4f8] text-[#1f2431]'"
             @click="toggleVaccine(tag)"
           >
             {{ tag }}
@@ -85,10 +107,10 @@
         </div>
       </section>
 
-      <div class="mt-6">
+      <div class="mt-8">
         <button
           type="button"
-          class="h-12 w-full rounded-xl bg-primary text-on-primary font-semibold shadow-cta disabled:opacity-60 active:scale-[0.99]"
+          class="h-[66px] w-full rounded-[20px] bg-gradient-to-br from-[#b83a00] to-[#ff6b35] text-[18px] font-bold text-white shadow-[0_12px_30px_rgba(255,107,53,0.3)] disabled:opacity-60 active:scale-[0.99]"
           :disabled="saving"
           @click="save"
         >
@@ -257,7 +279,7 @@ const save = async () => {
     await updateCat(props.id, payload);
     closeToast();
     showToast({ type: 'success', message: '已保存' });
-    router.replace({ name: 'Cats' });
+    router.replace({ name: 'CatArchive', params: { id: props.id } });
   } catch {
     closeToast();
     showToast({ type: 'fail', message: '保存失败，请稍后重试' });

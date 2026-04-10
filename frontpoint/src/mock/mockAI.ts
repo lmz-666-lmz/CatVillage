@@ -1,6 +1,7 @@
 import type { 
   ChatWithAIRequest, 
   ChatWithAIResponse, 
+  ChatHistoryEntry,
   ChatHistoryResponse,
   ClearSessionResponse,
   EmergencyHelpResponse
@@ -120,15 +121,32 @@ export const getMockChatHistory = (params: { sessionId?: string; catId?: string;
         filteredHistory = filteredHistory.filter(chat => chat.sessionId === params.sessionId);
       }
 
+      const normalized: ChatHistoryEntry[] = [];
+      for (let i = 0; i < filteredHistory.length; i += 1) {
+        const current = filteredHistory[i];
+        if (!current || current.role !== 'user') continue;
+
+        const next = filteredHistory[i + 1];
+        const answer = next && next.role === 'assistant' ? next.message : '';
+
+        normalized.push({
+          id: current.id,
+          pet_id: params.catId || 'mock-cat',
+          question: current.message,
+          answer,
+          created_at: current.timestamp
+        });
+      }
+
       // 分页处理
       const start = (params.page - 1) * params.pageSize;
       const end = start + params.pageSize;
-      const paginatedList = filteredHistory.slice(start, end);
+      const paginatedList = normalized.slice(start, end);
 
       resolve({ 
         data: { 
           list: paginatedList, 
-          total: filteredHistory.length,
+          total: normalized.length,
           page: params.page,
           pageSize: params.pageSize
         } 

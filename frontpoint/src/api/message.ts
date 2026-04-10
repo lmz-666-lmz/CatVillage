@@ -14,7 +14,7 @@ import type {
 } from '@/types/message';
 
 // 获取好友列表
-export function getFriendList(params: { page: number; pageSize: number }) {
+export function getFriendList(params: { page: number; pageSize: number; keyword?: string }) {
   return request<FriendListResponse>({
     url: '/friends/list',
     method: 'get',

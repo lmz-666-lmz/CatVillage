@@ -7,19 +7,19 @@
     </header>
 
     <div class="px-7 pt-2">
-      <h1 class="text-[48px] font-black tracking-tight text-[#12182a]">注册账号</h1>
+      <h1 class="text-[28px] font-black tracking-tight text-[#12182a]">注册账号</h1>
       <p class="mt-2 text-[16px] leading-7 text-[#5f4f48]">欢迎加入 Mao Village，开启你的猫友社区之旅</p>
 
       <van-form class="mt-10 space-y-6" @submit="onSubmit">
         <div>
           <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">手机号</div>
-          <div class="flex h-16 items-center rounded-2xl bg-[#e6e9fa] px-4">
+          <div class="flex h-13 items-center rounded-2xl bg-[#e6e9fa] px-4">
             <van-icon name="idcard" class="text-[#876e63]" />
             <input
               v-model="phone"
               type="tel"
               maxlength="11"
-              class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+              class="ml-3 h-full flex-1 bg-transparent text-[18px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
               placeholder="请输入手机号"
             />
           </div>
@@ -28,19 +28,19 @@
         <div>
           <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">验证码</div>
           <div class="flex items-center gap-3">
-            <div class="flex h-16 flex-1 items-center rounded-2xl bg-[#e6e9fa] px-4">
+            <div class="flex h-13 flex-1 items-center rounded-2xl bg-[#e6e9fa] px-4">
               <van-icon name="shield-o" class="text-[#876e63]" />
               <input
                 v-model="code"
                 type="text"
                 maxlength="6"
-                class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+                class="ml-3 h-full flex-1 bg-transparent text-[18px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
                 placeholder="六位验证码"
               />
             </div>
             <button
               type="button"
-              class="h-16 rounded-2xl bg-[#d9deef] px-5 text-[20px] font-bold text-[#5f4f48] disabled:opacity-60"
+              class="h-13 rounded-2xl bg-[#d9deef] px-5 text-[14px] font-bold text-[#5f4f48] disabled:opacity-60"
               :disabled="codeCooldown > 0 || !validatePhone(phone)"
               @click="onSendCode"
             >
@@ -51,12 +51,12 @@
 
         <div>
           <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">设置密码</div>
-          <div class="flex h-16 items-center rounded-2xl bg-[#e6e9fa] px-4">
+          <div class="flex h-13 items-center rounded-2xl bg-[#e6e9fa] px-4">
             <van-icon name="lock" class="text-[#876e63]" />
             <input
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
-              class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+              class="ml-3 h-full flex-1 bg-transparent text-[18px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
               placeholder="请输入密码"
               autocomplete="new-password"
             />
@@ -68,12 +68,12 @@
 
         <div>
           <div class="mb-2 text-[15px] font-bold text-[#5f4f48]">确认密码</div>
-          <div class="flex h-16 items-center rounded-2xl bg-[#e6e9fa] px-4">
+          <div class="flex h-13 items-center rounded-2xl bg-[#e6e9fa] px-4">
             <van-icon name="replay" class="text-[#876e63]" />
             <input
               v-model="confirmPassword"
               :type="showPassword ? 'text' : 'password'"
-              class="ml-3 h-full flex-1 bg-transparent text-[24px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
+              class="ml-3 h-full flex-1 bg-transparent text-[18px] text-[#5f4f48] outline-none placeholder:text-[#9aa3b5]"
               placeholder="请再次输入密码"
               autocomplete="new-password"
             />
@@ -87,7 +87,7 @@
 
         <button
           type="submit"
-          class="mt-3 h-[66px] w-full rounded-2xl bg-gradient-to-r from-[#b83a00] to-[#ff6b35] text-[34px] font-bold text-white shadow-[0_10px_22px_rgba(255,107,53,0.26)] active:scale-[0.99]"
+          class="mt-3 h-14 w-full rounded-2xl bg-gradient-to-r from-[#b83a00] to-[#ff6b35] text-[18px] font-bold text-white shadow-[0_10px_22px_rgba(255,107,53,0.26)] active:scale-[0.99]"
         >
           立即注册
         </button>

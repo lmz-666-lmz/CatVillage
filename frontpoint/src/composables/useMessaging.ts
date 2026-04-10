@@ -33,7 +33,7 @@ export function useMessaging() {
   /**
    * 获取好友列表
    */
-  const fetchFriendList = async (params: { page: number; pageSize: number }) => {
+  const fetchFriendList = async (params: { page: number; pageSize: number; keyword?: string }) => {
     loading.value = true;
     error.value = null;
 

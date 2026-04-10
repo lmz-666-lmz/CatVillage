@@ -15,6 +15,7 @@ export interface FriendResponse {
   avatar: string;
   lastOnlineAt: string;
   isOnline: boolean;
+  isFollowing?: boolean;
 }
 
 // 发送消息请求
