@@ -109,6 +109,24 @@ export interface HotTopicsResponse {
   list: HotTopicItem[];
 }
 
+export interface FollowerResponse {
+  id: string;
+  userId: string;
+  username: string;
+  nickname: string;
+  avatar: string;
+  lastOnlineAt: string;
+  isOnline: boolean;
+  isFollowing: boolean;
+}
+
+export interface FollowersListResponse {
+  list: FollowerResponse[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
 // Backward-compatible aliases for older API/composable names.
 export type SocialDynamic = DynamicResponse;
 export type SocialDynamicListResponse = DynamicsListResponse;

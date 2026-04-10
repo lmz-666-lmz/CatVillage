@@ -7,7 +7,8 @@ import type {
   FollowResponse,
   CommentRequest,
   CommentResponse,
-  HotTopicsResponse
+  HotTopicsResponse,
+  FollowersListResponse
 } from '@/types/social';
 
 // 发布动态
@@ -127,6 +128,15 @@ export function getMyDynamicsList(params: { page: number; pageSize: number; catI
 export function getHotTopics(params?: { limit?: number; sampleSize?: number }) {
   return request<HotTopicsResponse>({
     url: '/social/topics/hot',
+    method: 'get',
+    params
+  });
+}
+
+// 获取关注者列表/粉丝列表
+export function getFollowersList(params: { page: number; pageSize: number }) {
+  return request<FollowersListResponse>({
+    url: '/social/users/followers/list',
     method: 'get',
     params
   });

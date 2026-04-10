@@ -31,7 +31,7 @@ app.include_router(pet_profiles_router, prefix="/api/v1")
 app.include_router(emotions.router)
 app.include_router(ai_assistant.router)
 app.include_router(health.router)
-app.include_router(social.router)
+app.include_router(social.router, prefix="/api/v1")
 app.include_router(message.router)
 
 UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
