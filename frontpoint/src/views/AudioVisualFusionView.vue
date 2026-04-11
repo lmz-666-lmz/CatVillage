@@ -18,8 +18,8 @@
           <p class="mt-1 text-[13px] text-white/90">多模态 AI 深度学习融合</p>
           <p v-if="selectedCatName" class="mt-2 text-[12px] text-white/80">当前猫咪：{{ selectedCatName }}</p>
         </div>
-        <div class="grid h-14 w-14 place-items-center rounded-2xl bg-white/20">
-          <van-icon name="sound-o" size="26" color="#fff" />
+        <div class="grid h-14 w-14 place-items-center rounded-2xl bg-white/22 shadow-[0_8px_20px_rgba(24,31,52,0.12)]">
+          <span class="text-[18px] leading-none">🐱</span>
         </div>
       </div>
     </section>
@@ -41,7 +41,7 @@
             </div>
             <van-icon name="photo" size="32" color="#667eea" />
             <p class="mt-3 text-[12px] font-bold text-[#141a2c]">视觉特征</p>
-            <p class="mt-1 text-[10px] text-[#8f94a3]">2048 维向量</p>
+            <p class="mt-1 text-[10px] text-[#8f94a3]">图像识别接口</p>
           </div>
           <div class="relative rounded-[14px] bg-white p-4 text-center">
             <div class="absolute top-3 right-3 h-8 w-8 rounded-full bg-[#764ba2] flex items-center justify-center text-white text-sm font-bold">
@@ -177,7 +177,7 @@
           </div>
           <div class="min-w-0 flex-1">
             <div class="text-[16px] font-bold text-[#141a2c]">注意力机制融合</div>
-            <p class="mt-2 text-[13px] leading-relaxed text-[#5f7790]">通过 Transformer 多头注意力机制，将视觉特征（表情、姿态）与音频特征（叫声、呼吸声）在特征空间完全融合，消除信息孤岛</p>
+            <p class="mt-2 text-[13px] leading-relaxed text-[#5f7790]">通过注意力机制，将视觉特征（表情、姿态）与音频特征（叫声）在特征空间完全融合，消除信息孤岛</p>
           </div>
         </div>
       </article>
