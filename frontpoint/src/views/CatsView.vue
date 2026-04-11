@@ -7,7 +7,9 @@
 
       <h1 class="text-xl font-bold tracking-tight text-orange-500">喵喵台</h1>
 
-      <div class="w-9"></div>
+      <button type="button" class="grid h-9 w-9 place-items-center text-slate-600" @click="showToolsMenu = true">
+        <van-icon name="apps-o" size="20" />
+      </button>
     </header>
 
     <section v-if="loading" class="py-10 text-center">
@@ -152,6 +154,44 @@
       </section>
     </section>
 
+    <van-action-sheet v-model:show="showToolsMenu" title="AI 工具">
+      <div class="p-4">
+        <button
+          type="button"
+          class="flex w-full items-center justify-between rounded-xl border border-orange-500/20 bg-orange-50 px-4 py-3 text-left transition-colors hover:bg-orange-100"
+          @click="goToVisualRecognition"
+        >
+          <div class="flex items-center gap-3">
+            <div class="grid h-10 w-10 place-items-center rounded-lg bg-white text-orange-500">
+              <van-icon name="photo-o" size="20" />
+            </div>
+            <div>
+              <div class="text-sm font-bold text-orange-700">视觉识别</div>
+              <div class="text-xs text-orange-600">ViT 面部微表情识别</div>
+            </div>
+          </div>
+          <van-icon name="arrow" color="#ff6b35" />
+        </button>
+
+        <button
+          type="button"
+          class="mt-3 flex w-full items-center justify-between rounded-xl border border-purple-500/20 bg-purple-50 px-4 py-3 text-left transition-colors hover:bg-purple-100"
+          @click="goToAudioVisualFusion"
+        >
+          <div class="flex items-center gap-3">
+            <div class="grid h-10 w-10 place-items-center rounded-lg bg-white text-purple-600">
+              <van-icon name="sound-o" size="20" />
+            </div>
+            <div>
+              <div class="text-sm font-bold text-purple-700">视听融合</div>
+              <div class="text-xs text-purple-600">多模态情绪融合分析</div>
+            </div>
+          </div>
+          <van-icon name="arrow" color="#764ba2" />
+        </button>
+      </div>
+    </van-action-sheet>
+
     <van-action-sheet v-model:show="showCatSheet" title="猫咪管理">
       <div class="p-4">
         <div class="mb-3 text-xs text-on-surface-variant">当前：{{ selectedCatHint }}</div>
@@ -195,6 +235,7 @@ const loading = ref(false);
 const error = ref<string | null>(null);
 const analyzing = ref(false);
 const showCatSheet = ref(false);
+const showToolsMenu = ref(false);
 const audioInputRef = ref<HTMLInputElement | null>(null);
 const lastResult = ref<RecognizeEmotionResponse | null>(null);
 
@@ -368,6 +409,16 @@ const openRecordDetail = (item: EmotionRecord) => {
       cat: selectedCatHint.value,
     },
   });
+};
+
+const goToVisualRecognition = () => {
+  showToolsMenu.value = false;
+  router.push({ name: 'VisualRecognition' });
+};
+
+const goToAudioVisualFusion = () => {
+  showToolsMenu.value = false;
+  router.push({ name: 'AudioVisualFusion' });
 };
 
 const refresh = async () => {

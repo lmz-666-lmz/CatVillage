@@ -187,6 +187,18 @@ const routes: RouteRecordRaw[] = [
     meta: { title: '隐私协议与条款', requiresAuth: true, hideTabbar: true }
   },
   {
+    path: '/settings/visual-recognition',
+    name: 'VisualRecognition',
+    component: () => import('../views/VisualRecognitionView.vue'),
+    meta: { title: '视觉识别', requiresAuth: true, hideTabbar: true }
+  },
+  {
+    path: '/settings/audio-visual-fusion',
+    name: 'AudioVisualFusion',
+    component: () => import('../views/AudioVisualFusionView.vue'),
+    meta: { title: '视听融合', requiresAuth: true, hideTabbar: true }
+  },
+  {
     path: '/cats/audio-history',
     name: 'AudioHistory',
     component: () => import('../views/AudioHistoryView.vue'),
