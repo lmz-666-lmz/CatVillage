@@ -34,16 +34,26 @@ export const useCatsStore = defineStore('cats', {
     async fetchAllCats() {
       this.loading = true;
       this.error = null;
+      if (this.cats.length === 0) {
+        this.loadFromLocalStorage();
+      }
       
       try {
         const response = await getAllPetProfiles();
         const payload = response.data;
-        this.cats = Array.isArray(payload) ? payload : payload.list || [];
+        const nextCats = Array.isArray(payload) ? payload : payload.list || [];
+        if (nextCats.length > 0) {
+          this.cats = nextCats;
+        } else if (this.cats.length === 0) {
+          // Backend may temporarily return empty when auth/network is unstable; keep usable cache.
+          this.loadFromLocalStorage();
+        }
         // 同步到本地存储
         this.syncToLocalStorage();
       } catch (error: unknown) {
         const errorMessage = (error instanceof Error) ? error.message : '获取猫咪档案列表失败';
         this.error = errorMessage;
+        this.loadFromLocalStorage();
         console.error('获取猫咪档案列表失败:', error);
       } finally {
         this.loading = false;
@@ -185,7 +195,10 @@ export const useCatsStore = defineStore('cats', {
       const storedCats = localStorage.getItem('cats');
       if (storedCats) {
         try {
-          this.cats = JSON.parse(storedCats);
+          const parsed = JSON.parse(storedCats);
+          if (Array.isArray(parsed)) {
+            this.cats = parsed;
+          }
         } catch (error) {
           console.error('解析本地存储的猫咪数据失败:', error);
         }

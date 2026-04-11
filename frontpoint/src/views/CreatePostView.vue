@@ -344,6 +344,15 @@ const publish = async () => {
     showToast({ type: 'fail', message: '请填写内容' });
     return;
   }
+
+  if (!hasCats.value || !selectedCatId.value) {
+    await catsStore.fetchAllCats();
+    const first = catsStore.getAllCats[0];
+    if (!currentCatStore.getCurrentCatId && first) {
+      currentCatStore.setCurrentCat(first.id);
+    }
+  }
+
   if (!hasCats.value || !selectedCatId.value) {
     showToast({ type: 'fail', message: '请先添加并选择一只猫咪' });
     return;

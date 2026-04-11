@@ -8,8 +8,16 @@ type BackendLoginResponse = {
 type BackendRegisterResponse = {
   id: string;
   username: string;
+  nickname?: string;
   is_active?: boolean;
   created_at?: string;
+};
+
+type BackendProfileResponse = {
+  id: string;
+  username: string;
+  nickname: string;
+  is_active: boolean;
 };
 
 export function loginUser(username: string, password: string) {
@@ -35,5 +43,13 @@ export function registerUser(username: string, password: string) {
       username,
       password
     }
+  });
+}
+
+export function updateUserProfile(nickname: string) {
+  return request<BackendProfileResponse>({
+    url: '/auth/profile',
+    method: 'put',
+    data: { nickname }
   });
 }

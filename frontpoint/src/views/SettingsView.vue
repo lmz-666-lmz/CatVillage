@@ -91,6 +91,7 @@ import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import type { UploaderFileListItem } from 'vant';
+import { updateUserProfile } from '@/api/auth';
 import { getUserDisplayProfile, patchUserDisplayProfile } from '@/utils/userProfile';
 
 const router = useRouter();
@@ -109,6 +110,18 @@ const settingItems = [
   { icon: 'info-o', title: '关于猫村', desc: '版本信息与帮助入口', routeName: 'SettingsAbout' }
 ] as const;
 
+const syncNicknameToServer = async (nicknameValue: string) => {
+  const token = localStorage.getItem('token');
+  if (!token) {
+    return;
+  }
+  try {
+    await updateUserProfile(nicknameValue);
+  } catch {
+    showToast({ type: 'fail', message: '昵称仅本地更新，云端同步失败' });
+  }
+};
+
 const hydrate = () => {
   const profile = getUserDisplayProfile();
   avatarUrl.value = profile.avatarUrl;
@@ -123,27 +136,43 @@ const onAvatarRead = (file: UploaderFileListItem | UploaderFileListItem[]) => {
     return;
   }
   if (typeof fileItem.content === 'string') {
-    avatarUrl.value = fileItem.content;
+    const next = patchUserDisplayProfile({ nickname: nickname.value, avatarUrl: fileItem.content });
+    avatarUrl.value = next.avatarUrl;
+    nickname.value = next.nickname;
+    miaoId.value = next.miaoId;
+    nicknameDraft.value = next.nickname;
+    showToast({ type: 'success', message: '头像已更新' });
   }
 };
 
-const confirmNickname = () => {
+const confirmNickname = async () => {
   const value = nicknameDraft.value.trim();
   if (!value) {
     showToast({ type: 'fail', message: '用户名不能为空' });
     return;
   }
-  nickname.value = value;
+
+  // Confirming nickname should immediately persist, so profile page updates right away.
+  const next = patchUserDisplayProfile({ nickname: value, avatarUrl: avatarUrl.value });
+  avatarUrl.value = next.avatarUrl;
+  nickname.value = next.nickname;
+  miaoId.value = next.miaoId;
+  nicknameDraft.value = next.nickname;
+  await syncNicknameToServer(next.nickname);
   showNicknameSheet.value = false;
+  showToast({ type: 'success', message: '用户名已更新' });
 };
 
-const saveChanges = () => {
-  const value = nickname.value.trim();
+const saveChanges = async () => {
+  const value = (nicknameDraft.value || nickname.value).trim();
   if (!value) {
     showToast({ type: 'fail', message: '用户名不能为空' });
     return;
   }
-  patchUserDisplayProfile({ nickname: value, avatarUrl: avatarUrl.value });
+  nickname.value = value;
+  nicknameDraft.value = value;
+  const next = patchUserDisplayProfile({ nickname: value, avatarUrl: avatarUrl.value });
+  await syncNicknameToServer(next.nickname);
   showToast({ type: 'success', message: '已保存' });
   router.back();
 };

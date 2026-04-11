@@ -49,8 +49,10 @@
 
     <section class="mt-6 grid grid-cols-2 gap-3.5">
       <button type="button" class="rounded-[18px] bg-[#f7d8cf] p-5 text-left" @click="goMyCats">
-        <div class="text-2xl">
-          <van-icon name="paw-o" size="36" color="#b33500" />
+        <div class="grid h-12 w-12 place-items-center rounded-2xl bg-[#fbe8e1] text-[#8a2a00] shadow-[inset_0_0_0_1px_rgba(179,53,0,0.08)]">
+          <svg class="h-7 w-7" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M8.5 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm7 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM4 11.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zm16 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM12 11c-2.3 0-5.1.7-6.5 2.8C4 16.1 5.4 20 12 20s8-3.9 6.5-6.2C17.1 11.7 14.3 11 12 11z"/>
+          </svg>
         </div>
         <div class="mt-7 text-[26px] font-extrabold text-[#7b2400]">我的萌宠</div>
         <div class="mt-2 text-[17px] text-[#a55a46]">{{ catsCountText }}</div>
@@ -59,7 +61,11 @@
       <div class="grid grid-rows-2 gap-3.5">
       <button type="button" class="flex items-center justify-between rounded-[18px] bg-white px-5" @click="goMyFavorites">
           <div class="flex items-center gap-3">
-            <van-icon name="star" size="22" color="#ff6b35" />
+            <div class="grid h-9 w-9 place-items-center rounded-xl bg-[#fff2e9] text-[#ff6b35] shadow-[inset_0_0_0_1px_rgba(255,107,53,0.15)]">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 3.5l2.6 5.2 5.7.8-4.1 4 1 5.7-5.2-2.7-5.2 2.7 1-5.7-4.1-4 5.7-.8L12 3.5z"/>
+              </svg>
+            </div>
             <span class="text-[24px] font-bold text-[#12182a]">我的收藏</span>
           </div>
           <van-icon name="arrow" color="#b0a8a5" />
@@ -67,7 +73,12 @@
 
         <button type="button" class="flex items-center justify-between rounded-[18px] bg-white px-5" @click="goCreatePost">
           <div class="flex items-center gap-3">
-            <van-icon name="edit" size="22" color="#00a7cb" />
+            <div class="grid h-9 w-9 place-items-center rounded-xl bg-[#e8f8ff] text-[#00a7cb] shadow-[inset_0_0_0_1px_rgba(0,167,203,0.15)]">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M4 17.2V20h2.8L17.9 8.9l-2.8-2.8L4 17.2z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M13.9 7.1l2.8 2.8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </div>
             <span class="text-[24px] font-bold text-[#12182a]">村内笔记</span>
           </div>
           <van-icon name="arrow" color="#b0a8a5" />
@@ -92,8 +103,11 @@
 
         <button type="button" class="flex w-full items-center justify-between border-t border-slate-100 px-4 py-4 text-left" @click="openHealthArchive">
           <div class="flex items-center gap-3">
-            <div class="grid h-11 w-11 place-items-center rounded-xl" style="background-color: #e0f2fe;">
-              <van-icon name="medical-o" color="#0284c7" size="22" />
+            <div class="grid h-11 w-11 place-items-center rounded-xl bg-[#e0f2fe] text-[#0284c7] shadow-[inset_0_0_0_1px_rgba(2,132,199,0.12)]">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.8" />
+                <path d="M12 8v8M8 12h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" />
+              </svg>
             </div>
             <div>
               <div class="text-[24px] font-bold text-[#12182a]">健康档案</div>
@@ -105,8 +119,11 @@
 
         <button type="button" class="flex w-full items-center justify-between border-t border-slate-100 px-4 py-4 text-left" @click="openFeedingRecord">
           <div class="flex items-center gap-3">
-            <div class="grid h-11 w-11 place-items-center rounded-xl bg-purple-50">
-              <van-icon name="shop-o" color="#a855f7" />
+            <div class="grid h-11 w-11 place-items-center rounded-xl bg-[#f3ebff] text-[#9554e5] shadow-[inset_0_0_0_1px_rgba(149,84,229,0.14)]">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M7 9.5h10l-1 8H8l-1-8z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M9 9.5a3 3 0 0 1 6 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
             </div>
             <div>
               <div class="text-[24px] font-bold text-[#12182a]">投喂记录</div>
@@ -121,10 +138,25 @@
     <section class="mt-6 overflow-hidden rounded-[18px] bg-[#b83a00] px-6 py-5 text-white">
       <div class="flex items-center justify-between">
         <div>
-          <div class="text-[28px] font-extrabold">喵村VIP</div>
+          <div class="flex items-center gap-2 text-[28px] font-extrabold">
+            <svg class="h-7 w-7 text-[#ffd8b8]" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M4 18h16l-1.6-8.2a1 1 0 0 0-1.6-.6L13 12 9.2 9.2a1 1 0 0 0-1.6.6L4 18zm3.2-2h9.6l.9-4.6-3.1 2.3a1 1 0 0 1-1.2 0l-2.4-1.8-2.4 1.8a1 1 0 0 1-1.2 0l-3.1-2.3.9 4.6zM7 20h10a1 1 0 1 1 0 2H7a1 1 0 1 1 0-2z"/>
+            </svg>
+            <span>喵村VIP</span>
+          </div>
           <div class="mt-1 text-[16px] text-white/85">解锁专属挂件与勋章</div>
         </div>
-        <button type="button" class="rounded-full bg-white px-5 py-2 text-[16px] font-bold text-[#b83a00]" @click="openVip">立即开启</button>
+        <button
+          type="button"
+          class="inline-flex min-w-[152px] items-center justify-center gap-1 rounded-full px-5 py-2 text-[16px] font-extrabold shadow-[0_2px_10px_rgba(120,40,0,0.12)]"
+          style="background:#fff6ec;color:#8f2d00;"
+          @click="openVip"
+        >
+          <span class="leading-none">立即开启</span>
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M8 6l8 6-8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
       </div>
     </section>
 
@@ -153,7 +185,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import { useCatsStore } from '@/stores';
-import { getUserDisplayProfile } from '@/utils/userProfile';
+import { globalProfile } from '@/utils/userProfile';
 import { useMessaging } from '@/composables/useMessaging';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
 
@@ -162,9 +194,9 @@ const catsStore = useCatsStore();
 const { fetchFollowerList, fetchFriendList } = useMessaging();
 const { fetchMyDynamicsList } = useSocialFeatures();
 
-const avatarUrl = ref('');
-const nickname = ref('');
-const miaoId = ref('');
+const avatarUrl = computed(() => globalProfile.avatarUrl);
+const nickname = computed(() => globalProfile.nickname);
+const miaoId = computed(() => globalProfile.miaoId);
 const bio = ref('');
 const stats = ref({ following: 0, followers: 0, likes: 0 });
 
@@ -241,7 +273,10 @@ const openMarket = () => {
   showToast({ message: '喵村市集即将开放' });
 };
 
-const openHealthArchive = () => {
+const openHealthArchive = async () => {
+  if (!catsStore.getAllCats.length) {
+    await catsStore.fetchAllCats();
+  }
   const firstCat = catsStore.getAllCats[0];
   if (!firstCat) {
     showToast({ type: 'fail', message: '请先添加猫咪档案' });
@@ -251,7 +286,10 @@ const openHealthArchive = () => {
   router.push({ name: 'CatArchive', params: { id: firstCat.id } });
 };
 
-const openFeedingRecord = () => {
+const openFeedingRecord = async () => {
+  if (!catsStore.getAllCats.length) {
+    await catsStore.fetchAllCats();
+  }
   const firstCat = catsStore.getAllCats[0];
   if (!firstCat) {
     showToast({ type: 'fail', message: '请先添加猫咪档案' });
@@ -266,10 +304,6 @@ const openVip = () => {
 };
 
 onMounted(() => {
-  const profile = getUserDisplayProfile();
-  avatarUrl.value = profile.avatarUrl;
-  nickname.value = profile.nickname;
-  miaoId.value = profile.miaoId;
   void catsStore.fetchAllCats();
   void loadProfileStats();
 });

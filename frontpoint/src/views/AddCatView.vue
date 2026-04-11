@@ -227,7 +227,7 @@ const ageInMonths = computed<number>(() => {
 });
 
 const weightNumber = computed<number | undefined>(() => {
-  const raw = form.value.weightKg.trim();
+  const raw = String(form.value.weightKg || '').trim();
   if (!raw) {
     return undefined;
   }

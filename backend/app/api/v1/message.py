@@ -14,6 +14,15 @@ from app.schemas.message import QuickMeowRequest, SendMessageRequest, UpdateRead
 router = APIRouter(prefix="/api/v1", tags=["messages"])
 
 
+def _display_name(user: User | None) -> str:
+    if user is None:
+        return ""
+    nickname = (getattr(user, "nickname", "") or "").strip()
+    if nickname:
+        return nickname
+    return user.username
+
+
 def _serialize_message(message: Message) -> dict:
     return {
         "id": message.id,
@@ -31,7 +40,7 @@ def _serialize_friend(user: User, is_following: bool = False) -> dict:
         "id": user.id,
         "userId": user.id,
         "username": user.username,
-        "nickname": user.username,
+        "nickname": _display_name(user),
         "avatar": "",
         "lastOnlineAt": "",
         "isOnline": False,
@@ -50,9 +59,14 @@ def get_friend_list(
     query = db.query(User).filter(User.id != current_user.id)
 
     if keyword:
-                keyword_trimmed = keyword.strip()
-                if keyword_trimmed:
-                        query = query.filter(User.username.like(f"%{keyword_trimmed}%"))
+        keyword_trimmed = keyword.strip()
+        if keyword_trimmed:
+            query = query.filter(
+                or_(
+                    User.username.like(f"%{keyword_trimmed}%"),
+                    User.nickname.like(f"%{keyword_trimmed}%"),
+                )
+            )
 
     total = query.count()
     # SQL Server requires ORDER BY when OFFSET/LIMIT (FETCH NEXT) is used.
@@ -205,8 +219,8 @@ def get_conversation_list(
 
     target_ids = list(conversations.keys())
     if target_ids:
-        user_rows = db.query(User.id, User.username).filter(User.id.in_(target_ids)).all()
-        user_map = {user_id: username for user_id, username in user_rows}
+        user_rows = db.query(User).filter(User.id.in_(target_ids)).all()
+        user_map = {user.id: _display_name(user) for user in user_rows}
 
         unread_rows = (
             db.query(Message.sender_id, func.count(Message.id))

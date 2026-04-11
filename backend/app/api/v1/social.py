@@ -48,6 +48,15 @@ def _parse_images(raw_images: str | None) -> list[str]:
     return [str(item) for item in parsed if isinstance(item, str) and item.strip()]
 
 
+def _display_name(user: User | None) -> str:
+    if user is None:
+        return ""
+    nickname = (getattr(user, "nickname", "") or "").strip()
+    if nickname:
+        return nickname
+    return user.username
+
+
 def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Session) -> DynamicResponse:
     user = db.query(User).filter(User.id == dynamic.user_id).first()
     cat = None
@@ -94,7 +103,7 @@ def _serialize_dynamic(dynamic: SocialDynamic, current_user: User | None, db: Se
         id=dynamic.id,
         user_id=dynamic.user_id,
         cat_id=dynamic.cat_id,
-        username=user.username if user else "",
+        username=_display_name(user),
         cat_name=cat.name if cat else None,
         avatar=getattr(user, "avatar", ""), # TODO: actual avatar
         content=dynamic.content,
@@ -164,7 +173,7 @@ def _serialize_dynamic_list(items: list[SocialDynamic], current_user: User | Non
             id=dynamic.id,
             user_id=dynamic.user_id,
             cat_id=dynamic.cat_id,
-            username=dynamic.user.username if dynamic.user else "",
+            username=_display_name(dynamic.user),
             cat_name=dynamic.cat.name if dynamic.cat else None,
             avatar=getattr(dynamic.user, "avatar", "") if dynamic.user else "",
             content=dynamic.content,
@@ -200,7 +209,7 @@ def _serialize_comment(comment: SocialComment, current_user: User, db: Session) 
     return CommentResponse(
         id=comment.id,
         user_id=comment.user_id,
-        username=user.username if user else "",
+        username=_display_name(user),
         avatar=getattr(user, "avatar", ""), # TODO
         dynamic_id=comment.dynamic_id,
         content=comment.content,
@@ -372,7 +381,7 @@ def list_followers(
                     id=user.id,
                     user_id=user.id,
                     username=user.username,
-                    nickname=getattr(user, "nickname", user.username), # TODO: actual nickname mapping
+                    nickname=_display_name(user),
                     avatar=getattr(user, "avatar", ""), # TODO
                     last_online_at=created_at.isoformat() if created_at else "",
                     is_online=getattr(user, "is_online", False), # TODO: actual online status
@@ -432,8 +441,8 @@ def get_dynamic_detail(
     comment_user_ids = {comment.user_id for comment in comments}
     comment_user_map: dict[str, str] = {}
     if comment_user_ids:
-        comment_user_rows = db.query(User.id, User.username).filter(User.id.in_(comment_user_ids)).all()
-        comment_user_map = {user_id: username for user_id, username in comment_user_rows}
+        comment_user_rows = db.query(User).filter(User.id.in_(comment_user_ids)).all()
+        comment_user_map = {item.id: _display_name(item) for item in comment_user_rows}
 
     comment_like_ids: set[str] = set()
     if comments and current_user:
@@ -491,13 +500,12 @@ def like_dynamic(
         like = SocialLike(id=str(uuid4()), dynamic_id=dynamic_id, user_id=current_user.id, is_active=True)
         db.add(like)
         db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.like_count: SocialDynamic.like_count + 1})
-        dynamic.like_count += 1
     elif not like.is_active:
         like.is_active = True
         db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.like_count: SocialDynamic.like_count + 1})
-        dynamic.like_count += 1
 
     db.commit()
+    db.refresh(dynamic)
 
     return ResponseEnvelope(data=LikeResponse(is_liked=True, like_count=dynamic.like_count))
 
@@ -520,9 +528,9 @@ def unlike_dynamic(
     if like and like.is_active:
         like.is_active = False
         db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.like_count: func.greatest(SocialDynamic.like_count - 1, 0)})
-        dynamic.like_count = max(dynamic.like_count - 1, 0)
         db.commit()
 
+    db.refresh(dynamic)
     return ResponseEnvelope(data=LikeResponse(is_liked=False, like_count=dynamic.like_count))
 
 
@@ -545,7 +553,6 @@ def post_comment(
     )
     db.add(comment)
     db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).update({SocialDynamic.comment_count: SocialDynamic.comment_count + 1})
-    dynamic.comment_count += 1
     db.commit()
     db.refresh(comment)
 
@@ -727,8 +734,8 @@ def list_my_dynamics(
     return ResponseEnvelope(
         data=DynamicsListResponse(
             list=safe_list,
-            total=total,
-            page=page,
-            page_size=pageSize,
+            limit=pageSize,
+            has_more=(page * pageSize) < total,
+            cursor=None
         )
     )

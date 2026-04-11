@@ -1,3 +1,4 @@
+import { reactive } from 'vue';
 import type { DynamicResponse } from '@/types/social';
 
 export interface UserDisplayProfile {
@@ -43,8 +44,11 @@ export const getUserDisplayProfile = (): UserDisplayProfile => {
   };
 };
 
+export const globalProfile = reactive<UserDisplayProfile>(getUserDisplayProfile());
+
 export const setUserDisplayProfile = (profile: UserDisplayProfile) => {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
+  Object.assign(globalProfile, profile);
 };
 
 export const patchUserDisplayProfile = (patch: Partial<UserDisplayProfile>) => {

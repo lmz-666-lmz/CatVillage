@@ -305,7 +305,7 @@ const submitComment = async () => {
   commentBusy.value = true;
   showToast({ type: 'loading', message: '发送中...', duration: 0, forbidClick: true });
   try {
-    const res = await postNewComment(detail.value.id, { dynamicId: detail.value.id, content: text });
+    const res = await postNewComment(detail.value.id, { content: text } as any);
     const profile = getUserDisplayProfile();
     const ownerComment = Boolean(res.isOwner);
     comments.value = [

@@ -26,13 +26,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
-import { getUserDisplayProfile } from '@/utils/userProfile';
+import { globalProfile } from '@/utils/userProfile';
 
 const router = useRouter();
-const profile = ref(getUserDisplayProfile());
+const profile = computed(() => globalProfile);
 
 const copyMiaoId = async () => {
   try {

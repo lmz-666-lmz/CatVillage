@@ -61,7 +61,7 @@
             </div>
             <div class="min-w-0 flex-1">
               <div class="flex items-center justify-between gap-2">
-                <div class="truncate text-[18px] font-bold text-[#12182a]">{{ conv.nickname }}</div>
+                <div class="truncate text-[18px] font-bold text-[#12182a]">{{ conv.nickname || conv.targetUserId }}</div>
                 <div class="text-[14px] text-[#9a9798]">{{ formatTime(conv.updatedAt) }}</div>
               </div>
               <div class="mt-0.5 flex items-center gap-2">
@@ -261,10 +261,11 @@ const reload = async () => {
 };
 
 const openConversation = (conv: Conversation) => {
+  const displayName = conv.nickname || conv.targetUserId;
   router.push({
     name: 'ChatDetail',
     params: { targetUserId: conv.targetUserId },
-    query: { nickname: conv.nickname, avatar: conv.avatar || defaultAvatar }
+    query: { nickname: displayName, avatar: conv.avatar || defaultAvatar }
   });
 };
 

@@ -6,7 +6,7 @@
 
     <header class="relative z-10 mt-8 text-center">
       <div class="mx-auto mb-5 grid h-[96px] w-[96px] place-items-center rounded-[24px] bg-[#fceee9] text-[#ff6b35]">
-        <van-icon name="paw" size="40" />
+        <van-icon name="smile-o" size="40" />
       </div>
       <h1 class="text-[38px] font-black tracking-tight text-[#111a32]">猫村</h1>
       <p class="mt-1 text-[14px] text-[#5f453b]">Mao Village</p>
@@ -79,6 +79,8 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { closeToast, showToast } from 'vant';
 import { loginUser } from '@/api/apiService';
+import { updateUserProfile } from '@/api/auth';
+import { DEFAULT_NICKNAME, getUserDisplayProfile } from '@/utils/userProfile';
 
 const router = useRouter();
 
@@ -109,6 +111,17 @@ const onSubmit = async () => {
 
     // 拿到你刚才看到的那个长长的 token，存起来
     localStorage.setItem('token', res.access_token);
+
+    const localProfile = getUserDisplayProfile();
+    const nickname = localProfile.nickname.trim();
+    if (nickname && nickname !== DEFAULT_NICKNAME) {
+      try {
+        await updateUserProfile(nickname);
+      } catch {
+        // Keep login successful even if nickname sync fails.
+      }
+    }
+
     // 避免切换账号后沿用旧账号的猫咪缓存，导致 AI 使用错误 pet_id
     localStorage.removeItem('cats');
     localStorage.removeItem('currentCatId');

@@ -51,16 +51,23 @@ type BackendWeeklyReportResponse = {
   week_end?: string;
 };
 
-const toEmotionRecord = (item: BackendEmotionRecord): EmotionRecordResponse => ({
-  id: String(item.id),
-  catId: item.pet_id,
-  userId: '',
-  audioUrl: item.audio_url || '',
-  emotionTag: item.label,
-  confidence: item.confidence ?? 0,
-  emotionDescription: item.emotion_description || '',
-  createdAt: item.record_time
-});
+const toEmotionRecord = (item: BackendEmotionRecord): EmotionRecordResponse => {
+  const token = localStorage.getItem('token');
+  const processedAudioUrl = item.audio_url 
+    ? `${item.audio_url}?token=${token}` 
+    : '';
+
+  return {
+    id: String(item.id),
+    catId: item.pet_id,
+    userId: '',
+    audioUrl: processedAudioUrl,
+    emotionTag: item.label,
+    confidence: item.confidence ?? 0,
+    emotionDescription: item.emotion_description || '',
+    createdAt: item.record_time
+  };
+};
 
 // 上传音频并识别情绪
 export function recognizeEmotion(data: FormData): Promise<ApiResponse<RecognizeEmotionResponse>> {
@@ -78,7 +85,8 @@ export function recognizeEmotion(data: FormData): Promise<ApiResponse<RecognizeE
     url: '/emotions/recognize',
     method: 'post',
     headers: { 'Content-Type': 'multipart/form-data' },
-    data: normalized
+    data: normalized,
+    timeout: 60000 // Increase timeout for audio analysis model loading
   }).then((response) => ({
     ...response,
     data: {

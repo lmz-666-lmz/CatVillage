@@ -97,6 +97,48 @@ def migrate_ai_chat_histories_schema() -> None:
         )
 
 
+def migrate_users_nickname_column() -> None:
+    with engine.begin() as connection:
+        if engine.dialect.name == "mssql":
+            has_nickname = connection.execute(
+                text(
+                    """
+                    SELECT COUNT(1)
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'nickname'
+                    """
+                )
+            ).scalar_one()
+
+            if has_nickname == 0:
+                connection.execute(text("ALTER TABLE users ADD nickname NVARCHAR(100) NULL"))
+
+            connection.execute(
+                text(
+                    """
+                    UPDATE users
+                    SET nickname = username
+                    WHERE nickname IS NULL OR LTRIM(RTRIM(nickname)) = ''
+                    """
+                )
+            )
+            return
+
+        if engine.dialect.name == "sqlite":
+            columns = connection.execute(text("PRAGMA table_info(users)")).fetchall()
+            has_nickname = any(row[1] == "nickname" for row in columns)
+            if not has_nickname:
+                connection.execute(text("ALTER TABLE users ADD COLUMN nickname VARCHAR(100)"))
+            connection.execute(text("UPDATE users SET nickname = username WHERE nickname IS NULL OR TRIM(nickname) = ''"))
+            return
+
+        try:
+            connection.execute(text("ALTER TABLE users ADD COLUMN nickname VARCHAR(100)"))
+        except Exception:
+            pass
+        connection.execute(text("UPDATE users SET nickname = username WHERE nickname IS NULL OR TRIM(nickname) = ''"))
+
+
 @app.get("/")
 def root() -> dict[str, str]:
     return {"status": "online"}
@@ -105,6 +147,7 @@ def root() -> dict[str, str]:
 @app.on_event("startup")
 def on_startup() -> None:
     try:
+        migrate_users_nickname_column()
         migrate_ai_chat_histories_schema()
         Base.metadata.create_all(bind=engine)
     except Exception as exc:

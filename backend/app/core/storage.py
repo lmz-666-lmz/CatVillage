@@ -29,5 +29,5 @@ class StorageService:
             return f"/api/v1/uploads/{sub_dir}/{filename}"
         return f"/api/v1/uploads/{filename}"
 
-UPLOAD_ROOT = Path(__file__).resolve().parents[3] / "uploads"
+UPLOAD_ROOT = Path(__file__).resolve().parents[2] / "uploads"
 storage_service = StorageService(UPLOAD_ROOT)

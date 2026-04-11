@@ -14,7 +14,7 @@
 
     <section class="relative z-10 mt-16 text-center">
       <div class="mx-auto mb-6 grid h-[112px] w-[112px] place-items-center rounded-[30px] bg-white/70 text-[#ff6b35] shadow-[0_14px_34px_rgba(255,107,53,0.18)] backdrop-blur">
-        <van-icon name="paw" size="50" />
+        <van-icon name="smile-o" size="50" />
       </div>
       <h1 class="text-[36px] font-black tracking-tight text-[#101a34]">欢迎来到猫村</h1>
       <p class="mt-4 text-[20px] font-semibold text-[#5e6475]">记录每只猫咪的情绪、健康和日常点滴</p>
