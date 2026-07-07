@@ -51,12 +51,12 @@
           class="mt-2 flex w-full flex-col items-center justify-center rounded-[28px] border-[3px] border-dashed border-[#ffcc99] bg-[linear-gradient(135deg,#fff8f4_0%,#fff_50%,#fef5ff_100%)] py-14 transition-all hover:border-[#f97316] active:scale-[0.98]"
           @click="router.push({ name: 'AddCat' })"
         >
-          <div class="mb-4 text-[56px] animate-bounce">🐱</div>
+          <div class="mb-4 text-[56px] cat-breath">🐱</div>
           <div class="mb-2 grid h-16 w-16 place-items-center rounded-full bg-[linear-gradient(135deg,#e06912,#f97316)] shadow-[0_12px_28px_rgba(249,115,22,0.28)]">
             <van-icon name="plus" size="30" color="#fff" />
           </div>
-          <div class="mt-3 text-[20px] font-extrabold text-[#172033]">添加新成员</div>
-          <div class="mt-1 text-[13px] text-[#748094]">登记你的第一只猫咪伙伴</div>
+          <div class="mt-3 text-[20px] font-extrabold text-[#172033]">{{ addCatTitle }}</div>
+          <div class="mt-1 text-[13px] text-[#748094]">{{ addCatHint }}</div>
         </button>
       </section>
     </main>
@@ -131,6 +131,8 @@ const petCards = computed(() => {
 });
 
 const memberCountText = computed(() => `${catsStore.getAllCats.length}位成员`);
+const addCatTitle = computed(() => catsStore.getAllCats.length ? '添加新的猫咪伙伴' : '添加你的第一只猫咪伙伴');
+const addCatHint = computed(() => catsStore.getAllCats.length ? '为新成员建立健康和情绪档案' : '登记档案后就能开始记录日常');
 const selectedCatName = computed(() => {
   const selected = catsStore.getCatById(selectedCatActionId.value);
   return selected?.name || '';
@@ -219,5 +221,22 @@ onMounted(() => {
 :deep(.cat-action-sheet .van-icon-cross) {
   font-size: 24px;
   color: #c3c7d0;
+}
+
+.cat-breath {
+  animation: catBreath 2.8s ease-in-out infinite;
+}
+
+@keyframes catBreath {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-4px) scale(1.03); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cat-breath,
+  button {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 </style>

@@ -8,12 +8,12 @@
     </header>
 
     <section class="mt-4 space-y-3 rounded-[22px] bg-[rgba(255,255,255,0.92)] border border-[rgba(226,232,240,0.92)] p-3 shadow-[0_12px_26px_rgba(23,32,51,0.06)]">
-      <van-cell title="允许被搜索到" label="他人可通过喵村号搜索到你" center>
+      <van-cell title="展示喵村号" label="关闭后本机个人页会隐藏喵村号" center>
         <template #right-icon>
           <van-switch v-model="config.searchable" active-color="#f97316" />
         </template>
       </van-cell>
-      <van-cell title="公开动态互动" label="允许陌生人评论和点赞" center>
+      <van-cell title="公开互动入口" label="关闭后本机会弱化陌生互动入口" center>
         <template #right-icon>
           <van-switch v-model="config.openInteraction" active-color="#f97316" />
         </template>
@@ -25,18 +25,16 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { DEFAULT_PRIVACY_SETTINGS, getPrivacySettings, savePrivacySettings } from '@/utils/userSettings';
 
 const router = useRouter();
-const STORAGE_KEY = 'settings-privacy';
 
-const defaultValue = { searchable: true, openInteraction: true };
-const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as typeof defaultValue | null;
-const config = reactive(parsed || defaultValue);
+const config = reactive({ ...DEFAULT_PRIVACY_SETTINGS, ...getPrivacySettings() });
 
 watch(
   () => ({ ...config }),
   (value) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    savePrivacySettings(value);
   },
   { deep: true }
 );

@@ -24,7 +24,7 @@
         <h2 class="profile-name">{{ nickname }}</h2>
         <p class="profile-hint">点击头像或用户名修改资料</p>
       </button>
-      <p class="profile-miao-id">喵村号：{{ miaoId }}</p>
+      <p class="profile-miao-id">{{ privacy.searchable ? `喵村号：${miaoId}` : '喵村号已在本机隐藏' }}</p>
       <p class="profile-bio">{{ bio || '村里的一只普通巡逻官 🐾' }}</p>
     </section>
 
@@ -69,7 +69,7 @@
         <div class="profile-quick-icon-wrap blue">
           <van-icon name="edit" size="20" />
         </div>
-        <span class="profile-quick-title">村内笔记</span>
+        <span class="profile-quick-title">{{ privacy.openInteraction ? '村内笔记' : '安静记录' }}</span>
         <van-icon name="arrow" size="16" class="profile-quick-arrow" />
       </button>
     </section>
@@ -141,6 +141,7 @@ import { clearAccountRuntimeState, getCurrentUserId, globalProfile, setCurrentUs
 import { useMessaging } from '@/composables/useMessaging';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
 import { getDefaultUserAvatar, getSafeAvatarUrl } from '@/utils/image';
+import { getPrivacySettings, SETTINGS_CHANGED_EVENT, type PrivacySettings } from '@/utils/userSettings';
 
 const router = useRouter();
 const catsStore = useCatsStore();
@@ -154,6 +155,7 @@ const nickname = computed(() => globalProfile.nickname);
 const miaoId = computed(() => globalProfile.miaoId);
 const bio = ref('');
 const stats = ref({ following: 0, followers: 0, likes: 0 });
+const privacy = ref<PrivacySettings>(getPrivacySettings());
 const catsCountText = computed(() => `${Math.max(catsStore.getAllCats.length, 0)}只毛孩子已上线`);
 
 const formatCount = (value: number) => {
@@ -188,7 +190,12 @@ const logout = () => { clearAccountRuntimeState({ includeToken: true }); catsSto
 const openSettings = () => router.push({ name: 'Settings' });
 const goMyCats = () => router.push({ name: 'MyPets' });
 const goMyFavorites = () => router.push({ name: 'MyFavorites' });
-const goCreatePost = () => router.push({ name: 'CreatePost' });
+const goCreatePost = () => {
+  if (!privacy.value.openInteraction) {
+    showToast({ message: '已开启安静模式，发布后仍可手动管理互动' });
+  }
+  router.push({ name: 'CreatePost' });
+};
 const openMarket = () => showToast({ message: '喵村市集即将开放' });
 const openVip = () => showToast({ message: 'VIP 功能即将开放' });
 const openHealthArchive = async () => {
@@ -204,7 +211,10 @@ const openFeedingRecord = async () => {
   router.push({ name: 'FeedRecord', query: { catId: first.id } });
 };
 
-onMounted(() => { void hydrateProfile(); void catsStore.fetchAllCats(true); void loadProfileStats(); });
+onMounted(() => {
+  window.addEventListener(SETTINGS_CHANGED_EVENT, () => { privacy.value = getPrivacySettings(); });
+  void hydrateProfile(); void catsStore.fetchAllCats(true); void loadProfileStats();
+});
 </script>
 
 <style scoped>

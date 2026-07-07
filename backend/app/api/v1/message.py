@@ -9,7 +9,7 @@ from app.core.dependencies import get_current_user
 from app.database.session import get_db
 from app.models.cat_profile import CatProfile
 from app.models.message import Message
-from app.models.social import SocialFollow
+from app.models.social import SocialComment, SocialDynamic, SocialFollow, SocialLike
 from app.models.user import User
 from app.schemas.message import QuickMeowRequest, SendMessageRequest, UpdateReadStatusRequest
 
@@ -89,6 +89,55 @@ def _serialize_friend(user: User, db: Session, is_following: bool = False) -> di
     }
 
 
+def _count_private_unread(db: Session, user_id: str) -> int:
+    return int(
+        db.query(func.count(Message.id))
+        .filter(
+            Message.receiver_id == user_id,
+            Message.receiver_deleted_at.is_(None),
+            Message.status != "read",
+        )
+        .scalar()
+        or 0
+    )
+
+
+def _count_received_comments(db: Session, user_id: str) -> int:
+    return int(
+        db.query(func.count(SocialComment.id))
+        .join(SocialDynamic, SocialComment.dynamic_id == SocialDynamic.id)
+        .filter(
+            SocialDynamic.user_id == user_id,
+            SocialComment.user_id != user_id,
+        )
+        .scalar()
+        or 0
+    )
+
+
+def _count_received_likes(db: Session, user_id: str) -> int:
+    return int(
+        db.query(func.count(SocialLike.id))
+        .join(SocialDynamic, SocialLike.dynamic_id == SocialDynamic.id)
+        .filter(
+            SocialDynamic.user_id == user_id,
+            SocialLike.user_id != user_id,
+            SocialLike.is_active == True,
+        )
+        .scalar()
+        or 0
+    )
+
+
+def _count_followers(db: Session, user_id: str) -> int:
+    return int(
+        db.query(func.count(SocialFollow.id))
+        .filter(SocialFollow.followed_user_id == user_id)
+        .scalar()
+        or 0
+    )
+
+
 @router.get("/friends/list")
 def get_friend_list(
     page: int = Query(1, ge=1),
@@ -163,6 +212,28 @@ def send_message(
     db.refresh(message)
 
     return {"code": 200, "msg": "success", "data": _serialize_message(message)}
+
+
+@router.get("/messages/unread-summary")
+def get_unread_summary(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    private_messages = _count_private_unread(db, current_user.id)
+    comments = _count_received_comments(db, current_user.id)
+    likes = _count_received_likes(db, current_user.id)
+    followers = _count_followers(db, current_user.id)
+    return {
+        "code": 200,
+        "msg": "success",
+        "data": {
+            "privateMessages": private_messages,
+            "comments": comments,
+            "likes": likes,
+            "followers": followers,
+            "total": private_messages + comments + likes + followers,
+        },
+    }
 
 
 @router.put("/messages/{message_id}/revoke")
@@ -294,6 +365,93 @@ def get_conversation_list(
             "total": total,
         },
     }
+
+
+@router.get("/conversations/search")
+def search_conversations(
+    q: str = Query(..., min_length=1),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(10, ge=1),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    keyword = q.strip()
+    if not keyword:
+        return {"code": 200, "msg": "success", "data": {"list": [], "total": 0}}
+
+    visible_messages = (
+        db.query(Message)
+        .filter(_visible_message_filter(current_user.id))
+        .order_by(Message.sent_at.desc())
+        .all()
+    )
+    target_ids = {
+        message.receiver_id if message.sender_id == current_user.id else message.sender_id
+        for message in visible_messages
+    }
+    if not target_ids:
+        return {"code": 200, "msg": "success", "data": {"list": [], "total": 0}}
+
+    user_rows = db.query(User).filter(User.id.in_(target_ids)).all()
+    user_map = {user.id: user for user in user_rows}
+    matched_user_ids = {
+        user.id
+        for user in user_rows
+        if keyword.lower() in (user.username or "").lower()
+        or keyword.lower() in ((user.nickname or "")).lower()
+    }
+
+    latest_by_target: dict[str, Message] = {}
+    matched_targets: dict[str, str] = {}
+    for message in visible_messages:
+        target_id = message.receiver_id if message.sender_id == current_user.id else message.sender_id
+        latest_by_target.setdefault(target_id, message)
+        content = message.content or ""
+        if target_id in matched_targets:
+            continue
+        if target_id in matched_user_ids or keyword.lower() in content.lower():
+            matched_targets[target_id] = content
+
+    if not matched_targets:
+        return {"code": 200, "msg": "success", "data": {"list": [], "total": 0}}
+
+    unread_rows = (
+        db.query(Message.sender_id, func.count(Message.id))
+        .filter(
+            Message.sender_id.in_(list(matched_targets.keys())),
+            Message.receiver_id == current_user.id,
+            Message.receiver_deleted_at.is_(None),
+            Message.status != "read",
+        )
+        .group_by(Message.sender_id)
+        .all()
+    )
+    unread_map = {sender_id: count for sender_id, count in unread_rows}
+
+    items: list[dict] = []
+    for target_id, snippet in matched_targets.items():
+        latest = latest_by_target.get(target_id)
+        if latest is None:
+            continue
+        target_user = user_map.get(target_id)
+        items.append({
+            "id": target_id,
+            "targetUserId": target_id,
+            "targetType": "user",
+            "lastMessage": latest.content,
+            "lastMessageType": latest.message_type,
+            "unreadCount": int(unread_map.get(target_id, 0)),
+            "updatedAt": latest.sent_at.isoformat() if latest.sent_at else "",
+            "avatar": _avatar_url(target_user),
+            "nickname": _display_name(target_user),
+            "isOnline": False,
+            "matchSnippet": snippet or latest.content,
+        })
+
+    total = len(items)
+    start = (page - 1) * pageSize
+    end = start + pageSize
+    return {"code": 200, "msg": "success", "data": {"list": items[start:end], "total": total}}
 
 
 @router.get("/conversations/{target_user_id}/messages")

@@ -24,7 +24,7 @@
 
       <div v-else>
         <!-- Idle: History + Hot Topics + Recommended -->
-        <template v-if="!keyword.trim()">
+          <template v-if="!keyword.trim()">
           <!-- Search History -->
           <section v-if="searchHistory.length" class="search-section">
             <div class="section-header">
@@ -106,7 +106,7 @@
         <!-- Search Results -->
         <template v-else>
           <div v-if="filteredList.length === 0" class="search-empty">
-            <span class="search-empty-icon">🔍</span>
+            <span class="search-empty-icon">ฅ</span>
             <div class="search-empty-title">没有找到相关内容</div>
             <div class="search-empty-text">换个关键词试试吧</div>
           </div>
@@ -139,12 +139,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { showToast } from 'vant';
 import AppTopBar from '@/components/AppTopBar.vue';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
-import { getHotTopics } from '@/api/social';
+import { getHotTopics, searchDynamics } from '@/api/social';
 import { getOptionalImageUrl, getSafeAvatarUrl } from '@/utils/image';
 import type { HotTopicItem, SocialDynamic } from '@/types/social';
 
@@ -155,6 +155,8 @@ const loading = ref(false);
 const keyword = ref('');
 const searchHistory = ref<string[]>([]);
 const hotTopics = ref<HotTopicItem[]>([]);
+const searchResults = ref<SocialDynamic[]>([]);
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const HISTORY_KEY = 'social_search_history';
 const DEFAULT_TOPICS: HotTopicItem[] = [
@@ -165,14 +167,7 @@ const DEFAULT_TOPICS: HotTopicItem[] = [
 
 const list = computed(() => getCurrentDynamics.value);
 
-const filteredList = computed(() => {
-  const key = keyword.value.trim().toLowerCase();
-  if (!key) return list.value;
-  return list.value.filter((item) => {
-    const text = `${item.username} ${item.catName || ''} ${item.content}`.toLowerCase();
-    return text.includes(key);
-  });
-});
+const filteredList = computed(() => keyword.value.trim() ? searchResults.value : list.value);
 
 const recommendedList = computed(() => list.value.slice(0, 6));
 
@@ -208,8 +203,26 @@ const applyKeyword = (term: string) => {
   pushHistory(value);
 };
 
-const commitKeyword = () => { pushHistory(keyword.value); };
+const commitKeyword = () => { pushHistory(keyword.value); void runSearch(); };
 const clearHistory = () => { searchHistory.value = []; saveHistory(); };
+
+const runSearch = async () => {
+  const q = keyword.value.trim();
+  if (!q) {
+    searchResults.value = [];
+    return;
+  }
+  loading.value = true;
+  try {
+    const res = await searchDynamics({ q, page: 1, pageSize: 30 });
+    searchResults.value = res.data.list || [];
+  } catch {
+    searchResults.value = [];
+    showToast({ type: 'fail', message: '搜索失败，请稍后重试' });
+  } finally {
+    loading.value = false;
+  }
+};
 
 const initData = async () => {
   loading.value = true;
@@ -232,6 +245,16 @@ const initData = async () => {
 };
 
 onMounted(initData);
+watch(keyword, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    if (keyword.value.trim()) void runSearch();
+    else searchResults.value = [];
+  }, 320);
+});
+onBeforeUnmount(() => {
+  if (searchTimer) clearTimeout(searchTimer);
+});
 </script>
 
 <style scoped>
@@ -239,7 +262,9 @@ onMounted(initData);
 .search-page {
   min-height: 100dvh;
   padding: 0 16px 104px;
-  background: #fff7f0;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(249, 115, 22, 0.14), transparent 28%),
+    linear-gradient(180deg, #fff8f3 0%, #f5f7fb 48%, #eef6f5 100%);
 }
 
 .search-main {
@@ -252,17 +277,19 @@ onMounted(initData);
   align-items: center;
   gap: 9px;
   height: 42px;
-  border: 1.5px solid #ede8e0;
-  border-radius: 16px;
-  background: #fff;
+  border: 1.5px solid rgba(249, 115, 22, 0.18);
+  border-radius: 18px;
+  background: rgba(255,255,255,0.94);
   color: #ff6b35;
   padding: 0 14px;
-  transition: border-color .15s, box-shadow .15s;
+  box-shadow: 0 10px 24px rgba(23, 32, 51, 0.05);
+  transition: border-color .15s, box-shadow .15s, transform .15s;
 }
 
 .search-box.active {
   border-color: #ff6b35;
   box-shadow: 0 4px 16px rgba(255, 107, 53, 0.1);
+  transform: translateY(-1px);
 }
 
 .search-box input {
@@ -296,7 +323,7 @@ onMounted(initData);
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 64px 0;
+  padding: 54px 0;
 }
 
 .search-loading-text {
@@ -305,9 +332,29 @@ onMounted(initData);
   color: #7a8494;
 }
 
+.search-loading::before {
+  content: '...';
+  width: 54px;
+  height: 34px;
+  border-radius: 999px;
+  background: #fff;
+  color: #f97316;
+  display: grid;
+  place-items: center;
+  margin-bottom: 10px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  animation: floatSoft 2.4s ease-in-out infinite;
+}
+
 /* ========== SECTIONS ========== */
 .search-section {
   margin-bottom: 24px;
+  border: 1px solid rgba(226, 232, 240, 0.82);
+  border-radius: 22px;
+  background: rgba(255,255,255,0.72);
+  padding: 14px;
+  box-shadow: 0 12px 26px rgba(23,32,51,0.05);
 }
 
 .section-header {
@@ -489,6 +536,7 @@ onMounted(initData);
   margin-top: 40px;
   padding: 48px 20px;
   text-align: center;
+  border: 1px dashed #ffd7bf;
   border-radius: 24px;
   background: #fff;
   box-shadow: 0 2px 12px rgba(16, 32, 51, 0.03);
@@ -498,6 +546,8 @@ onMounted(initData);
   font-size: 44px;
   display: block;
   margin-bottom: 12px;
+  color: #f97316;
+  animation: floatSoft 3s ease-in-out infinite;
 }
 
 .search-empty-title {
@@ -520,12 +570,31 @@ onMounted(initData);
 }
 
 .result-card {
+  border: 1px solid rgba(226, 232, 240, 0.92);
   border-radius: 18px;
   background: #fff;
   padding: 15px 16px;
   cursor: pointer;
   box-shadow: 0 1px 6px rgba(16, 32, 51, 0.03);
   transition: transform .14s;
+}
+
+@keyframes floatSoft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-loading::before,
+  .search-empty-icon,
+  .search-box,
+  .result-card,
+  .topic-card,
+  .recommend-card,
+  .history-tag {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 .result-card:active {

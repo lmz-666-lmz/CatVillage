@@ -70,7 +70,7 @@
 
         <div class="mt-4 flex items-center justify-around rounded-[14px] bg-[#f5f7fb] py-3">
           <div class="text-center">
-            <button type="button" :class="detail.isLiked ? 'text-[#f97316]' : 'text-[#748094]'" :disabled="likeBusy" @click="toggleLike">
+            <button type="button" :class="detail.isLiked ? 'text-[#f97316]' : 'text-[#748094]'" :disabled="likeBusy || !privacy.openInteraction" @click="toggleLike">
               <van-icon :name="detail.isLiked ? 'like' : 'like-o'" size="20" />
             </button>
             <div class="mt-2 text-[16px] text-[#172033]">{{ formatCount(detail.likeCount) }}</div>
@@ -129,7 +129,7 @@
         placeholder="说点什么吧..."
         @keyup.enter="submitComment"
       />
-      <button type="button" class="grid h-10 w-10 place-items-center rounded-[10px] bg-[#f5f7fb]" :class="detail?.isLiked ? 'text-[#f97316]' : 'text-[#172033]'" :disabled="likeBusy" @click="toggleLike">
+      <button type="button" class="grid h-10 w-10 place-items-center rounded-[10px] bg-[#f5f7fb]" :class="detail?.isLiked ? 'text-[#f97316]' : 'text-[#172033]'" :disabled="likeBusy || !privacy.openInteraction" @click="toggleLike">
         <van-icon :name="detail?.isLiked ? 'like' : 'like-o'" size="20" />
       </button>
       <button type="button" class="grid h-10 w-10 place-items-center rounded-[10px] bg-[#f5f7fb] text-[#172033]" :disabled="favoriteBusy" @click="toggleFavorite">
@@ -138,7 +138,7 @@
       <button
         type="button"
         class="h-10 w-14 rounded-[10px] bg-[#f97316] text-[16px] font-semibold text-white shadow-cta disabled:opacity-60"
-        :disabled="commentBusy || !draft.trim()"
+        :disabled="commentBusy || !draft.trim() || !privacy.openInteraction"
         @click="submitComment"
       >
         ➤
@@ -168,6 +168,7 @@ import { useSocialFeatures } from '@/composables/useSocialFeatures';
 import { formatRelativeTime } from '@/utils/date';
 import { applyDisplayProfileToDynamic } from '@/utils/userProfile';
 import { getDefaultUserAvatar, getSafeAvatarUrl } from '@/utils/image';
+import { getPrivacySettings, type PrivacySettings } from '@/utils/userSettings';
 import type { CommentResponse, SocialDynamic } from '@/types/social';
 
 const props = defineProps<{ id: string }>();
@@ -199,6 +200,7 @@ const error = ref<string | null>(null);
 const detail = ref<SocialDynamic | null>(null);
 const draft = ref('');
 const comments = ref<CommentResponse[]>([]);
+const privacy = ref<PrivacySettings>(getPrivacySettings());
 const fallbackImage = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=1200&q=80';
 
 const normalizeComments = (input: unknown) => {
@@ -283,6 +285,10 @@ const toggleFollow = async () => {
 };
 
 const toggleLike = async () => {
+  if (!privacy.value.openInteraction) {
+    showToast({ message: '公开互动入口已关闭' });
+    return;
+  }
   if (!detail.value || likeBusy.value) return;
   likeBusy.value = true;
   try {
@@ -326,6 +332,10 @@ const submitComment = async () => {
     return;
   }
   const text = draft.value.trim();
+  if (!privacy.value.openInteraction) {
+    showToast({ message: '公开互动入口已关闭' });
+    return;
+  }
   if (!text) {
     return;
   }

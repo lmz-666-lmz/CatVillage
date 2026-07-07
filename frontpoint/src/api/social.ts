@@ -136,6 +136,18 @@ export function getDynamicsList(params: { page: number; pageSize: number; catId?
   });
 }
 
+export function searchDynamics(params: { q: string; page: number; pageSize: number }) {
+  return request<any>({
+    url: '/social/dynamics/search',
+    method: 'get',
+    params
+  }).then((res) => {
+    const data = res.data || res;
+    const list = Array.isArray(data.list) ? data.list.map(mapDynamic) : [];
+    return { ...res, data: { ...data, list } } as { data: SocialDynamicListResponse };
+  });
+}
+
 // 获取关注流动态列表
 export function getFollowingDynamicsList(params: { page: number; pageSize: number; catId?: string }) {
   return request<any>({

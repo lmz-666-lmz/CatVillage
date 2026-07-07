@@ -9,8 +9,10 @@ import type {
   QuickMeowRequest,
   QuickMeowResponse,
   ConversationListResponse,
+  ConversationSearchResponse,
   ConversationMessagesResponse,
-  DeleteConversationResponse
+  DeleteConversationResponse,
+  UnreadSummaryResponse
 } from '@/types/message';
 
 // 获取好友列表
@@ -63,6 +65,21 @@ export function getConversationList(params: { page: number; pageSize: number }) 
     url: '/conversations/list',
     method: 'get',
     params
+  });
+}
+
+export function searchConversations(params: { q: string; page: number; pageSize: number }) {
+  return request<ConversationSearchResponse>({
+    url: '/conversations/search',
+    method: 'get',
+    params
+  });
+}
+
+export function getUnreadSummary() {
+  return request<UnreadSummaryResponse>({
+    url: '/messages/unread-summary',
+    method: 'get'
   });
 }
 

@@ -57,6 +57,7 @@ export interface ConversationResponse {
   avatar: string;
   nickname: string;
   isOnline: boolean;
+  matchSnippet?: string;
 }
 
 // 获取会话历史消息请求参数
@@ -110,6 +111,14 @@ export type ConversationListResponse = {
   list: ConversationResponse[];
   total: number;
 };
+export type ConversationSearchResponse = ConversationListResponse;
+export interface UnreadSummaryResponse {
+  privateMessages: number;
+  comments: number;
+  likes: number;
+  followers: number;
+  total: number;
+}
 export interface UpdateReadStatusResponse {
   success: boolean;
 }

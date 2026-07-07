@@ -23,6 +23,11 @@
           <van-switch v-model="config.like" active-color="#f97316" />
         </template>
       </van-cell>
+      <van-cell title="粉丝通知" label="新关注会计入消息红点" center>
+        <template #right-icon>
+          <van-switch v-model="config.follower" active-color="#f97316" />
+        </template>
+      </van-cell>
     </section>
   </div>
 </template>
@@ -30,18 +35,16 @@
 <script setup lang="ts">
 import { reactive, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { DEFAULT_NOTIFICATION_SETTINGS, getNotificationSettings, saveNotificationSettings } from '@/utils/userSettings';
 
 const router = useRouter();
-const STORAGE_KEY = 'settings-notification';
 
-const defaultValue = { message: true, comment: true, like: true };
-const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') as typeof defaultValue | null;
-const config = reactive(parsed || defaultValue);
+const config = reactive({ ...DEFAULT_NOTIFICATION_SETTINGS, ...getNotificationSettings() });
 
 watch(
   () => ({ ...config }),
   (value) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    saveNotificationSettings(value);
   },
   { deep: true }
 );

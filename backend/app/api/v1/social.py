@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func, update
+from sqlalchemy import func, or_, update
 
 from app.core.dependencies import get_current_user
 from app.core.dependencies import get_optional_current_user
@@ -480,6 +480,59 @@ def list_dynamics(
             cursor=next_cursor,
             limit=limit,
             has_more=has_more,
+        )
+    )
+
+
+@router.get("/dynamics/search", response_model=ResponseEnvelope[DynamicsListResponse])
+def search_dynamics(
+    q: str = Query(..., min_length=1),
+    page: int = Query(1, ge=1),
+    pageSize: int = Query(20, ge=1, le=50),
+    current_user: User | None = Depends(get_optional_current_user),
+    db: Session = Depends(get_db),
+):
+    keyword = q.strip().lstrip("#")
+    if not keyword:
+        return ResponseEnvelope(
+            data=DynamicsListResponse(
+                list=[],
+                total=0,
+                page=page,
+                page_size=pageSize,
+                limit=pageSize,
+                has_more=False,
+                cursor=None,
+            )
+        )
+
+    pattern = f"%{keyword}%"
+    query = (
+        db.query(SocialDynamic)
+        .options(joinedload(SocialDynamic.user), joinedload(SocialDynamic.cat))
+        .join(User, SocialDynamic.user_id == User.id)
+        .outerjoin(CatProfile, SocialDynamic.cat_id == CatProfile.id)
+        .filter(
+            or_(
+                SocialDynamic.content.like(pattern),
+                User.username.like(pattern),
+                User.nickname.like(pattern),
+                CatProfile.name.like(pattern),
+            )
+        )
+        .order_by(SocialDynamic.is_recommended.desc(), SocialDynamic.created_at.desc())
+    )
+    total = query.count()
+    items = query.offset((page - 1) * pageSize).limit(pageSize).all()
+    return ResponseEnvelope(
+        data=DynamicsListResponse(
+            list=_serialize_dynamic_list(items, current_user, db),
+            total=total,
+            page=page,
+            page_size=pageSize,
+            limit=pageSize,
+            has_more=(page * pageSize) < total,
+            cursor=None,
         )
     )
 

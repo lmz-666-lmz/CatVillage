@@ -31,7 +31,7 @@
         @click="activeTab = tab.key"
       >
         {{ tab.label }}
-        <span v-if="tab.key === 'private' && totalUnread > 0">{{ totalUnread > 99 ? '99+' : totalUnread }}</span>
+        <span v-if="badgeForTab(tab.key)">{{ badgeForTab(tab.key) }}</span>
       </button>
       <button class="refresh-btn" type="button" aria-label="刷新" @click="refresh">
         <van-icon name="replay" size="16" />
@@ -53,17 +53,22 @@
 
       <template v-else>
         <section v-if="activeTab === 'private'" class="message-list">
-          <div v-if="conversations.length === 0" class="empty-card">
+          <div v-if="searchLoading" class="empty-card">
+            <van-loading size="26" color="#f97316" />
+            <strong>正在搜索消息</strong>
+            <span>会同时匹配昵称和会话内容</span>
+          </div>
+          <div v-else-if="!searchingPrivate && conversations.length === 0" class="empty-card">
             <van-icon name="chat-o" size="38" />
             <strong>暂无会话</strong>
             <span>在广场互动或添加好友后开始聊天</span>
           </div>
-          <div v-else-if="searchKeyword && filteredConversations.length === 0" class="empty-card">
+          <div v-else-if="searchingPrivate && visibleConversations.length === 0" class="empty-card">
             <van-icon name="search" size="38" />
             <strong>无搜索结果</strong>
-            <span>未找到匹配的会话</span>
+            <span>未找到匹配的昵称或消息内容</span>
           </div>
-          <article v-for="conv in filteredConversations" :key="conv.id" class="conversation-card" @click="openConversation(conv)">
+          <article v-for="conv in visibleConversations" :key="conv.id" class="conversation-card" @click="openConversation(conv)">
             <div class="avatar-wrap">
               <van-image :src="getSafeAvatarUrl(conv.avatar, conv.targetUserId)" fit="cover" width="54" height="54" round>
                 <template #error>
@@ -78,6 +83,7 @@
                 <time>{{ formatTime(conv.updatedAt) }}</time>
               </div>
               <p>{{ previewMessage(conv.lastMessage, conv.lastMessageType) }}</p>
+              <p v-if="searchingPrivate && conv.matchSnippet" class="match-snippet">匹配：{{ conv.matchSnippet }}</p>
             </div>
             <van-icon name="arrow" color="#b6bfcc" />
             <button type="button" class="conversation-delete" @click.stop="deleteConversationOnlyMine(conv)">
@@ -190,6 +196,14 @@ import type { Conversation } from '@/types/message';
 import type { DynamicResponse } from '@/types/social';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
 import { getDefaultUserAvatar, getSafeAvatarUrl } from '@/utils/image';
+import { getUnreadSummary, searchConversations } from '@/api/message';
+import {
+  applyNotificationSettings,
+  formatBadgeCount,
+  markNoticeCategorySeen,
+  SETTINGS_CHANGED_EVENT,
+  type UnreadSummary
+} from '@/utils/userSettings';
 
 const router = useRouter();
 const { fetchConversationList, fetchFollowerList, removeConversation, getCurrentConversations, getCurrentFollowers } = useMessaging();
@@ -201,7 +215,12 @@ const searchKeyword = ref('');
 const isSearching = ref(false);
 const activeTab = ref<'private' | 'comments' | 'likes' | 'fans'>('private');
 const loadedState = ref({ private: false, comments: false, likes: false, fans: false });
+const searchLoading = ref(false);
+const searchResults = ref<Conversation[]>([]);
+const rawUnreadSummary = ref<UnreadSummary>({ privateMessages: 0, comments: 0, likes: 0, followers: 0, total: 0 });
+const displayUnreadSummary = ref<UnreadSummary>({ privateMessages: 0, comments: 0, likes: 0, followers: 0, total: 0 });
 let conversationPollingTimer: ReturnType<typeof setInterval> | null = null;
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
 const tabs = [
   { key: 'private', label: '私信' },
@@ -212,19 +231,22 @@ const tabs = [
 
 const conversations = computed(() => getCurrentConversations.value);
 const fans = computed(() => getCurrentFollowers.value);
-const totalUnread = computed(() => conversations.value.reduce((s, c) => s + (c.unreadCount || 0), 0));
+const searchingPrivate = computed(() => activeTab.value === 'private' && !!searchKeyword.value.trim());
+const visibleConversations = computed(() => searchingPrivate.value ? searchResults.value : conversations.value);
+const totalUnread = computed(() => displayUnreadSummary.value.privateMessages || conversations.value.reduce((s, c) => s + (c.unreadCount || 0), 0));
 
 const onSearchBlur = () => { setTimeout(() => { if (!searchKeyword.value) isSearching.value = false; }, 200); };
 
-const filteredConversations = computed(() => {
-  const kw = searchKeyword.value.trim().toLowerCase();
-  if (!kw) return conversations.value;
-  return conversations.value.filter(c =>
-    (c.nickname || c.targetUserId || '').toLowerCase().includes(kw)
-    || (c.lastMessage || '').toLowerCase().includes(kw)
-    || (c.targetUserId || '').toLowerCase().includes(kw)
-  );
-});
+const badgeForTab = (tab: 'private' | 'comments' | 'likes' | 'fans') => {
+  const value = tab === 'private'
+    ? totalUnread.value
+    : tab === 'comments'
+      ? displayUnreadSummary.value.comments
+      : tab === 'likes'
+        ? displayUnreadSummary.value.likes
+        : displayUnreadSummary.value.followers;
+  return formatBadgeCount(value);
+};
 
 interface DynamicNoticeItem {
   id: string;
@@ -258,16 +280,21 @@ const fetchByTab = async (tab: string, force = false) => {
     if (tab === 'private') {
       await fetchConversationList({ page: 1, pageSize: 20 });
       loadedState.value.private = true;
+      await refreshUnreadSummary();
       return;
     }
     if (tab === 'comments' || tab === 'likes') {
       await fetchMyDynamicsList({ page: 1, pageSize: 50 });
       loadedState.value.comments = true;
       loadedState.value.likes = true;
+      markNoticeCategorySeen(tab === 'comments' ? 'comments' : 'likes', rawUnreadSummary.value);
+      displayUnreadSummary.value = applyNotificationSettings(rawUnreadSummary.value);
       return;
     }
     await fetchFollowerList({ page: 1, pageSize: 50 });
     loadedState.value.fans = true;
+    markNoticeCategorySeen('followers', rawUnreadSummary.value);
+    displayUnreadSummary.value = applyNotificationSettings(rawUnreadSummary.value);
   } catch {
     showToast({ type: 'fail', message: '加载失败，请稍后重试' });
   } finally {
@@ -275,8 +302,45 @@ const fetchByTab = async (tab: string, force = false) => {
   }
 };
 
+const refreshUnreadSummary = async () => {
+  try {
+    const response = await getUnreadSummary();
+    rawUnreadSummary.value = {
+      privateMessages: response.data.privateMessages || 0,
+      comments: response.data.comments || 0,
+      likes: response.data.likes || 0,
+      followers: response.data.followers || 0,
+      total: response.data.total || 0
+    };
+    displayUnreadSummary.value = applyNotificationSettings(rawUnreadSummary.value);
+  } catch {
+    displayUnreadSummary.value = applyNotificationSettings(rawUnreadSummary.value);
+  }
+};
+
+const runConversationSearch = async () => {
+  const q = searchKeyword.value.trim();
+  if (!q) {
+    searchResults.value = [];
+    return;
+  }
+  searchLoading.value = true;
+  try {
+    const response = await searchConversations({ q, page: 1, pageSize: 20 });
+    searchResults.value = response.data.list || [];
+  } catch {
+    searchResults.value = [];
+    showToast({ type: 'fail', message: '搜索失败，请稍后重试' });
+  } finally {
+    searchLoading.value = false;
+  }
+};
+
 const refresh = () => { if (!loading.value) void fetchByTab(activeTab.value, true); };
 const reload = () => { pageError.value = null; void fetchByTab(activeTab.value, true); };
+const syncDisplayedUnread = () => {
+  displayUnreadSummary.value = applyNotificationSettings(rawUnreadSummary.value);
+};
 
 const openConversation = (conv: Conversation) => {
   router.push({ name: 'ChatDetail', params: { targetUserId: conv.targetUserId }, query: { nickname: conv.nickname || conv.targetUserId, avatar: getSafeAvatarUrl(conv.avatar, conv.targetUserId) } });
@@ -320,20 +384,33 @@ const previewMessage = (text: string, type: Conversation['lastMessageType']) => 
 };
 
 watch(activeTab, t => { void fetchByTab(t); });
+watch(searchKeyword, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    if (activeTab.value === 'private') void runConversationSearch();
+  }, 300);
+});
 onMounted(() => {
-  void fetchByTab('private');
+  void Promise.all([fetchByTab('private'), refreshUnreadSummary()]);
   conversationPollingTimer = setInterval(() => {
-    if (activeTab.value === 'private' && !loading.value) {
+    void refreshUnreadSummary();
+    if (activeTab.value === 'private' && !loading.value && !searchKeyword.value.trim()) {
       void fetchByTab('private', true);
     }
   }, 5000);
+  window.addEventListener(SETTINGS_CHANGED_EVENT, syncDisplayedUnread);
 });
-onActivated(() => { if (activeTab.value === 'private') void fetchByTab('private', true); });
+onActivated(() => { void refreshUnreadSummary(); if (activeTab.value === 'private') void fetchByTab('private', true); });
 onBeforeUnmount(() => {
   if (conversationPollingTimer) {
     clearInterval(conversationPollingTimer);
     conversationPollingTimer = null;
   }
+  if (searchTimer) {
+    clearTimeout(searchTimer);
+    searchTimer = null;
+  }
+  window.removeEventListener(SETTINGS_CHANGED_EVENT, syncDisplayedUnread);
 });
 </script>
 
@@ -590,6 +667,16 @@ onBeforeUnmount(() => {
   line-height: 1.45;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.conversation-body .match-snippet {
+  margin-top: 5px;
+  border-radius: 10px;
+  background: #fff7ed;
+  color: #c2410c;
+  padding: 5px 8px;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .notice-card {

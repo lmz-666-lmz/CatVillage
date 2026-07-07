@@ -1,8 +1,8 @@
 <template>
   <div class="ai-page">
-    <AppTopBar title="AI 养育助手" subtitle="根据猫咪档案给出简短建议" kicker="AI Care">
+    <AppTopBar title="AI 养育助手" subtitle="结合档案、疫苗与喵喵台记录给出建议" kicker="AI 养育">
       <template #actions>
-        <button class="topbar-action" type="button" @click="handleClearHistory">清空</button>
+        <button v-if="selectedCat && hasChatHistory" class="topbar-action ai-clear-btn" type="button" @click="handleClearHistory">清空</button>
       </template>
     </AppTopBar>
 
@@ -20,20 +20,34 @@
                 <span class="ai-pet-tag">{{ petInfo.breed }}</span>
               </div>
               <div class="ai-pet-status">{{ petInfo.age }} · {{ petInfo.weight }}</div>
+              <div class="ai-pet-mini-chips">
+                <span>{{ vaccineBrief }}</span>
+                <span>{{ selectedCat.isNeutered ? '已绝育' : '未绝育' }}</span>
+              </div>
             </div>
           </div>
-          <div class="ai-pet-score">
+          <div class="ai-pet-score" :aria-label="petCardExpanded ? '收起猫咪档案' : '展开猫咪档案'">
             <span class="ai-pet-score-num">{{ petCardExpanded ? '收起' : '展开' }}</span>
             <van-icon :name="petCardExpanded ? 'arrow-up' : 'arrow-down'" size="14" />
           </div>
         </button>
         <div v-if="petCardExpanded" class="ai-pet-detail">
-          <span>健康状态：{{ petInfo.status }}</span>
-          <span>健康分：{{ petInfo.score }}</span>
-          <span>绝育：{{ selectedCat.isNeutered ? '已绝育' : '未绝育' }}</span>
-          <span class="col-span-full text-[11px] text-[#0f766e] font-bold">
-            {{ lastEmotionRefCount > 0 ? `已参考最近 ${lastEmotionRefCount} 条喵喵台记录` : '暂无喵喵台情绪记录' }}
-          </span>
+          <div v-for="item in petDetailChips" :key="item.label" class="ai-health-chip" :class="item.tone">
+            <span class="ai-health-icon">{{ item.icon }}</span>
+            <div>
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+            </div>
+          </div>
+
+          <div class="ai-reference-card">
+            <div class="ai-reference-title">
+              <span>🎧</span>
+              <strong>AI 参考信息</strong>
+            </div>
+            <p>{{ emotionReferenceText }}</p>
+            <small>AI 会结合年龄、体重、疫苗、健康记录和喵喵台情绪给出建议</small>
+          </div>
         </div>
         <div v-if="petCardExpanded" class="ai-pet-actions">
           <button type="button" class="ai-pet-action" @click="openCatSwitcher">
@@ -52,9 +66,9 @@
           <div class="ai-empty-paws"><span>🐾</span><span>🐾</span><span>🐾</span></div>
         </div>
         <h2 class="ai-empty-title">还没有猫咪伙伴</h2>
-        <p class="ai-empty-desc">添加猫咪后，可以获得更贴合档案的养护建议</p>
+        <p class="ai-empty-desc">先添加一只猫咪，AI 才能结合档案、年龄、疫苗和喵喵台记录给出养育建议。</p>
         <button class="ai-empty-btn" @click="router.push({ name: 'AddCat' })">
-          <van-icon name="plus" size="18" /> 添加猫咪
+          <van-icon name="plus" size="18" /> 添加猫咪伙伴
         </button>
       </section>
 
@@ -187,6 +201,26 @@ const petInfo = computed(() => ({
   score: healthInfo.value.score
 }));
 const cats = computed(() => catsStore.getAllCats);
+const hasChatHistory = computed(() => selectedCat.value && messages.value.some((item) => item.id !== 'welcome-1'));
+const vaccineBrief = computed(() => {
+  const raw = String(selectedCat.value?.vaccineStatus || '').trim();
+  return raw ? '已登记疫苗' : '暂无疫苗';
+});
+const vaccineDetail = computed(() => {
+  const raw = String(selectedCat.value?.vaccineStatus || '').trim();
+  return raw || '暂无疫苗';
+});
+const emotionReferenceText = computed(() =>
+  lastEmotionRefCount.value > 0
+    ? `已参考最近 ${lastEmotionRefCount.value} 条喵喵台记录`
+    : '还没有喵喵台记录，上传一次猫叫后 AI 建议会更准确'
+);
+const petDetailChips = computed(() => [
+  { icon: '💚', label: '健康状态', value: petInfo.value.status, tone: 'mint' },
+  { icon: '⭐', label: '健康分', value: `${petInfo.value.score}`, tone: 'warm' },
+  { icon: '🛡', label: '疫苗状态', value: vaccineDetail.value, tone: 'blue' },
+  { icon: '🐾', label: '绝育状态', value: selectedCat.value?.isNeutered ? '已绝育' : '未绝育', tone: 'soft' }
+]);
 
 const actionCards = ref([
   { name: '健康报告', icon: 'notes-o', iconClass: 'red' },
@@ -315,7 +349,54 @@ const buildAssistantSections = (content: string) => {
   flex: 1;
   flex-direction: column;
   overflow: hidden;
-  padding: 8px 16px 12px;
+  padding: 6px 16px 10px;
+}
+
+:deep(.app-topbar) {
+  padding-top: 10px;
+  padding-bottom: 9px;
+}
+
+:deep(.app-topbar-row) {
+  min-height: 40px;
+}
+
+:deep(.app-topbar-kicker) {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(249, 115, 22, 0.09);
+  color: var(--cv-accent);
+  padding: 3px 8px;
+  font-size: 10px;
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: none;
+}
+
+:deep(.app-topbar-title h1) {
+  margin-top: 4px;
+  color: var(--cv-ink);
+  font-size: 23px;
+  line-height: 1.05;
+}
+
+:deep(.app-topbar-title p) {
+  max-width: 250px;
+  color: var(--cv-muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+:deep(.topbar-action.ai-clear-btn) {
+  width: auto;
+  min-width: 50px;
+  height: 36px;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: var(--cv-ink);
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 6px 16px rgba(23, 32, 51, 0.06);
 }
 
 /* ========== HEADER ========== */
@@ -329,26 +410,205 @@ const buildAssistantSections = (content: string) => {
 .ai-header-clear:active { background: rgba(249,115,22,0.08); }
 
 /* ========== PET CARD ========== */
-.ai-pet-card { background: #fff; border-radius: 18px; padding: 12px; margin-bottom: 10px; box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
-.ai-pet-card-btn { display: flex; align-items: center; justify-content: space-between; width: 100%; border: none; background: none; cursor: pointer; padding: 0; text-align: left; }
-.ai-pet-left { display: flex; min-width: 0; align-items: center; gap: 10px; }
-.ai-pet-avatar-ring { position: relative; flex-shrink: 0; }
-.ai-pet-avatar { width: 44px; height: 44px; border-radius: 16px; object-fit: cover; border: 2.5px solid var(--cv-accent); }
+.ai-pet-card {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 10px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  padding: 12px;
+  box-shadow: 0 14px 30px rgba(23, 32, 51, 0.07);
+}
+.ai-pet-card::before {
+  content: '';
+  position: absolute;
+  top: -28px;
+  right: -22px;
+  width: 92px;
+  height: 92px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.14), transparent 66%);
+  pointer-events: none;
+}
+.ai-pet-card::after {
+  content: '••';
+  position: absolute;
+  right: 18px;
+  bottom: 12px;
+  color: rgba(249, 115, 22, 0.16);
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  pointer-events: none;
+}
+.ai-pet-card-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  border: none;
+  background: none;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+}
+.ai-pet-left { display: flex; min-width: 0; align-items: center; gap: 11px; }
+.ai-pet-avatar-ring {
+  position: relative;
+  flex-shrink: 0;
+  border-radius: 20px;
+  padding: 3px;
+  background: linear-gradient(135deg, #fff7ed, #ecfdf5);
+}
+.ai-pet-avatar { width: 50px; height: 50px; border-radius: 18px; object-fit: cover; border: 3px solid #fff; }
 .ai-pet-dot { position: absolute; bottom: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #22c55e; border: 2px solid #fff; animation: pulse 2s ease-in-out infinite; }
 @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
-.ai-pet-info { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.ai-pet-info { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
 .ai-pet-name-row { display: flex; align-items: center; gap: 8px; }
-.ai-pet-name { font-size: 17px; font-weight: 800; color: var(--cv-ink); }
-.ai-pet-tag { font-size: 11px; font-weight: 700; color: var(--cv-accent); background: rgba(249,115,22,0.08); padding: 2px 8px; border-radius: 999px; }
+.ai-pet-name { overflow: hidden; color: var(--cv-ink); font-size: 20px; font-weight: 1000; line-height: 1.12; text-overflow: ellipsis; white-space: nowrap; }
+.ai-pet-tag { flex-shrink: 0; font-size: 11px; font-weight: 900; color: var(--cv-accent); background: rgba(249,115,22,0.08); padding: 3px 8px; border-radius: 999px; }
 .ai-pet-status { overflow: hidden; font-size: 12px; color: #64748b; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
-.ai-pet-score { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; background: rgba(249,115,22,0.08); border-radius: 999px; padding: 7px 10px; color: var(--cv-accent); }
+.ai-pet-mini-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 2px;
+}
+.ai-pet-mini-chips span {
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #64748b;
+  padding: 3px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1;
+}
+.ai-pet-score { display: inline-flex; flex-shrink: 0; align-items: center; gap: 4px; border: 1px solid rgba(249,115,22,0.16); background: #fff7ed; border-radius: 999px; padding: 8px 10px; color: var(--cv-accent); }
 .ai-pet-score-num { font-size: 12px; font-weight: 900; color: var(--cv-accent); line-height: 1; }
 .ai-pet-score-label { font-size: 10px; font-weight: 700; color: var(--cv-accent); margin-top: 2px; }
-.ai-pet-detail { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; border-top: 1px solid #f3f4f6; padding-top: 10px; }
-.ai-pet-detail span { border-radius: 12px; background: #f8fafc; padding: 8px 6px; color: #64748b; font-size: 11px; font-weight: 800; text-align: center; }
-.ai-pet-actions { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #f3f4f6; }
-.ai-pet-action { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 600; color: #6b7280; background: none; border: none; cursor: pointer; padding: 4px 0; transition: color .12s; }
-.ai-pet-action.accent { color: var(--cv-accent); }
+.ai-pet-detail {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 11px;
+}
+.ai-health-chip {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #edf2f7;
+  border-radius: 15px;
+  background: #f8fafc;
+  padding: 9px;
+}
+.ai-health-chip.mint { background: #ecfdf5; border-color: #d7f7e8; }
+.ai-health-chip.warm { background: #fff7ed; border-color: #ffead5; }
+.ai-health-chip.blue { background: #eff6ff; border-color: #dbeafe; }
+.ai-health-chip.soft { background: #f7f5ff; border-color: #ece7ff; }
+.ai-health-icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.75);
+  font-size: 14px;
+}
+.ai-health-chip span:not(.ai-health-icon) {
+  display: block;
+  color: #748094;
+  font-size: 10px;
+  font-weight: 900;
+  line-height: 1.2;
+}
+.ai-health-chip strong {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--cv-ink);
+  font-size: 12px;
+  font-weight: 1000;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-reference-card {
+  grid-column: 1 / -1;
+  border: 1px solid #ffe4d4;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #fffaf7, #f7fffb);
+  padding: 10px 11px;
+}
+.ai-reference-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cv-ink);
+  font-size: 12px;
+}
+.ai-reference-title strong {
+  font-weight: 1000;
+}
+.ai-reference-card p {
+  margin: 6px 0 0;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.45;
+}
+.ai-reference-card small {
+  display: block;
+  margin-top: 4px;
+  color: #748094;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.ai-pet-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f3f4f6;
+}
+.ai-pet-action {
+  display: inline-flex;
+  min-width: 0;
+  flex: 1 1 128px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.86);
+  color: var(--cv-ink);
+  cursor: pointer;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 900;
+  transition: transform .12s, border-color .12s, color .12s;
+}
+.ai-pet-action.accent {
+  border-color: rgba(249,115,22,0.22);
+  background: #fff7ed;
+  color: var(--cv-accent);
+}
+.ai-pet-action:active {
+  transform: scale(.98);
+}
 
 /* ========== AI EMPTY ========== */
 .ai-empty { margin-bottom: 14px; text-align: center; padding: 36px 24px; background: linear-gradient(135deg, #fff8f4 0%, #fff 40%, #fef5ff 100%); border-radius: 24px; border: 2px dashed #ffe0cc; }
@@ -444,7 +704,6 @@ const buildAssistantSections = (content: string) => {
 
 /* Action button uses AppTopBar default .topbar-action style — consistent with MessagesView */
 
-.ai-pet-card,
 .ai-section,
 .ai-empty {
   border: 1px solid var(--cv-card-border);
@@ -453,7 +712,7 @@ const buildAssistantSections = (content: string) => {
 }
 
 .ai-pet-card {
-  border-radius: var(--cv-card-radius);
+  border: 1px solid var(--cv-card-border);
 }
 
 .ai-pet-avatar {
@@ -504,5 +763,41 @@ const buildAssistantSections = (content: string) => {
 .ai-input-wrap {
   border: 1px solid var(--cv-card-border);
   box-shadow: 0 -12px 28px rgba(23, 32, 51, 0.08);
+}
+
+@media (max-width: 380px) {
+  :deep(.app-topbar-title h1) {
+    font-size: 21px;
+  }
+
+  :deep(.app-topbar-title p) {
+    max-width: 220px;
+  }
+
+  .ai-pet-name {
+    font-size: 18px;
+  }
+
+  .ai-pet-avatar {
+    width: 46px;
+    height: 46px;
+  }
+
+  .ai-health-chip {
+    padding: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-empty-emoji,
+  .ai-empty-paws span,
+  .ai-pet-dot,
+  .ai-pet-action,
+  .ai-chip,
+  .ai-send-btn,
+  :deep(.topbar-action) {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 </style>

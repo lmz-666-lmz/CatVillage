@@ -185,12 +185,31 @@
           >
             {{ tag }}
           </button>
-
+          <button
+            v-for="tag in customVaccines"
+            :key="tag"
+            type="button"
+            class="rounded-full bg-[#fff1e8] px-4 py-2 text-[14px] font-bold text-[#c2410c] transition-all active:scale-95"
+            @click="removeVaccine(tag)"
+          >
+            {{ tag }} ×
+          </button>
+        </div>
+        <div class="mt-3 flex gap-2">
+          <input
+            v-model="customVaccineInput"
+            type="text"
+            maxlength="24"
+            placeholder="输入自定义疫苗名称"
+            class="h-11 min-w-0 flex-1 rounded-2xl border border-dashed border-[#e3c4b9] bg-white px-4 text-[14px] text-[#172033] outline-none placeholder:text-[#a1aab8]"
+            @keyup.enter="addCustomVaccine"
+          />
           <button
             type="button"
-            class="rounded-full border border-dashed border-[#e3c4b9] px-5 py-2 text-[14px] font-medium text-[#748094]"
+            class="rounded-2xl bg-[#172033] px-4 text-[14px] font-bold text-white active:scale-95"
+            @click="addCustomVaccine"
           >
-            + 自定义
+            添加
           </button>
         </div>
       </section>
@@ -218,6 +237,7 @@ import { useCatsStore } from '@/stores';
 import type { UpdateCatProfileRequest } from '@/types/cat';
 import { CAT_BREED_OPTIONS } from '@/constants/catBreeds';
 import { formatCatAge, parseCatAgeToMonths, validateAgeInput } from '@/utils/age';
+import { PRESET_VACCINES, buildVaccineStatus, isPresetVaccine, normalizeVaccineList, type PresetVaccine } from '@/utils/vaccines';
 
 interface EditCatFormState {
   name: string;
@@ -250,9 +270,11 @@ const form = ref<EditCatFormState>({
   isNeutered: false
 });
 
-const vaccineTags = ['三联疫苗', '狂犬疫苗', '体内驱虫', '体外驱虫'] as const;
-type VaccineTag = (typeof vaccineTags)[number];
-const selectedVaccines = ref<VaccineTag[]>([]);
+const vaccineTags = PRESET_VACCINES;
+type VaccineTag = PresetVaccine;
+const selectedVaccines = ref<string[]>([]);
+const customVaccineInput = ref('');
+const customVaccines = computed(() => selectedVaccines.value.filter((item) => !isPresetVaccine(item)));
 
 const breedOptions = CAT_BREED_OPTIONS.map((option) => ({
   label: option.label,
@@ -292,7 +314,21 @@ const toggleVaccine = (tag: VaccineTag): void => {
     selectedVaccines.value = selectedVaccines.value.filter((t) => t !== tag);
     return;
   }
-  selectedVaccines.value = [...selectedVaccines.value, tag];
+  selectedVaccines.value = normalizeVaccineList([...selectedVaccines.value, tag]);
+};
+
+const addCustomVaccine = (): void => {
+  const value = customVaccineInput.value.trim();
+  if (!value) {
+    showToast({ type: 'fail', message: '自定义疫苗不能为空' });
+    return;
+  }
+  selectedVaccines.value = normalizeVaccineList([...selectedVaccines.value, value]);
+  customVaccineInput.value = '';
+};
+
+const removeVaccine = (tag: string): void => {
+  selectedVaccines.value = selectedVaccines.value.filter((item) => item !== tag);
 };
 
 const ageInMonths = computed<number | undefined>(() => parseCatAgeToMonths(form.value.ageBirthdayText));
@@ -327,7 +363,7 @@ const hydrate = async () => {
     form.value.gender = c.gender ?? 1;
     form.value.isNeutered = c.isNeutered ?? false;
     avatarPreviewUrl.value = c.avatarUrl || '';
-    selectedVaccines.value = (c.vaccineStatus ? c.vaccineStatus.split('、') : []).filter(Boolean) as VaccineTag[];
+    selectedVaccines.value = normalizeVaccineList(c.vaccineStatus);
   } catch {
     error.value = '档案加载失败，请检查后端服务';
   } finally {
@@ -361,7 +397,7 @@ const save = async () => {
     gender: form.value.gender,
     isNeutered: form.value.isNeutered,
     weight: weightNumber.value,
-    vaccineStatus: selectedVaccines.value.join('、') || undefined,
+    vaccineStatus: buildVaccineStatus(selectedVaccines.value),
     avatarUrl: avatarPreviewUrl.value || undefined
   };
 

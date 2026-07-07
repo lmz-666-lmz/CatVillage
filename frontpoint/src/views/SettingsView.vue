@@ -80,7 +80,7 @@
       class="mt-3 mb-8 w-full text-center text-[13px] font-bold text-[#748094]"
       @click="showVersionDialog = true"
     >
-      当前版本 V2.3
+      当前版本 V2.4
     </button>
 
     <!-- 修改用户名弹窗 -->
@@ -109,12 +109,14 @@
     <van-overlay :show="showVersionDialog" @click="showVersionDialog = false">
       <div class="nickname-dialog-wrapper" @click.stop>
         <div class="nickname-dialog version-dialog">
-          <h3 class="nickname-dialog-title">CatVillage V2.3</h3>
+          <h3 class="nickname-dialog-title">CatVillage V2.4</h3>
           <div class="version-list">
-            <div class="version-item">AI 助手体验优化</div>
-            <div class="version-item">喵喵台与消息体验优化</div>
-            <div class="version-item">后台管理增强</div>
-            <div class="version-item">资源清理机制增强</div>
+            <div class="version-item">疫苗登记增强</div>
+            <div class="version-item">消息红点与搜索增强</div>
+            <div class="version-item">搜索页视觉升级</div>
+            <div class="version-item">设置项有效性增强</div>
+            <div class="version-item">欢迎页与主导航体验优化</div>
+            <div class="version-item">后台管理体验优化</div>
           </div>
           <div class="nickname-dialog-actions">
             <button type="button" class="nickname-dialog-btn confirm" @click="showVersionDialog = false">知道了</button>

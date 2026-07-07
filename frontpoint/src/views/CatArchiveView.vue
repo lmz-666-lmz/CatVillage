@@ -87,11 +87,11 @@
           </div>
         </div>
 
-        <div v-if="catInfo.vaccineStatus || catInfo.medicalHistory" class="mt-4 rounded-[16px] bg-[#fff6ef] p-3">
+        <div v-if="vaccineStatusText || catInfo.medicalHistory" class="mt-4 rounded-[16px] bg-[#fff6ef] p-3">
           <div class="text-[14px] font-bold text-[#172033]">健康备注</div>
           <div class="mt-1 text-[13px] leading-relaxed text-[#748094]">
-            <template v-if="catInfo.vaccineStatus">疫苗：{{ catInfo.vaccineStatus }}</template>
-            <br v-if="catInfo.vaccineStatus && catInfo.medicalHistory">
+            <template v-if="vaccineStatusText">疫苗：{{ vaccineStatusText }}</template>
+            <br v-if="vaccineStatusText && catInfo.medicalHistory">
             <template v-if="catInfo.medicalHistory">病史：{{ catInfo.medicalHistory }}</template>
           </div>
         </div>
@@ -320,6 +320,7 @@ import type { EmotionRecordResponse, WeeklyReportResponse } from '@/types/emotio
 import { useCatsStore, useCurrentCatStore } from '@/stores';
 import { DEFAULT_CAT_AVATAR, getSafeCatAvatarUrl } from '@/utils/image';
 import { formatCatAge } from '@/utils/age';
+import { buildVaccineStatus, normalizeVaccineList } from '@/utils/vaccines';
 
 type TimelineEvent = {
   id: string;
@@ -417,6 +418,10 @@ const latestWeightText = computed(() => {
   }
   return '';
 });
+
+const vaccineStatusText = computed(() =>
+  buildVaccineStatus(normalizeVaccineList(catInfo.value.vaccineStatus || sharedPayload.value?.vaccineStatus)) || ''
+);
 
 const sortedWeightAsc = computed(() => {
   return [...weightRecords.value].sort((a, b) => new Date(a.recordDate).getTime() - new Date(b.recordDate).getTime());
@@ -527,11 +532,11 @@ const timelineEvents = computed<TimelineEvent[]>(() => {
     });
   }
 
-  if (catInfo.value.vaccineStatus) {
+  if (vaccineStatusText.value) {
     events.push({
       id: 'vaccine',
       title: '疫苗状态更新',
-      detail: `当前疫苗状态：${catInfo.value.vaccineStatus}`,
+      detail: `当前疫苗状态：${vaccineStatusText.value}`,
       time: formatDateTime(catInfo.value.updatedAt || createdAt || new Date().toISOString()),
       level: 'normal',
       sortAt: new Date(catInfo.value.updatedAt || createdAt || new Date().toISOString()).getTime()
@@ -605,7 +610,7 @@ const loadProfile = async () => {
         gender: sharedPayload.value.gender,
         weight: sharedPayload.value.weight,
         isNeutered: sharedPayload.value.neutered,
-        vaccineStatus: sharedPayload.value.vaccineStatus,
+        vaccineStatus: buildVaccineStatus(normalizeVaccineList(sharedPayload.value.vaccineStatus)),
         medicalHistory: sharedPayload.value.medicalHistory,
         createdAt: sharedPayload.value.createdAt,
         updatedAt: sharedPayload.value.updatedAt

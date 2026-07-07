@@ -12,9 +12,9 @@
 
       <van-tabbar v-if="showTabbar" route safe-area-inset-bottom active-color="#f97316" inactive-color="#748094">
         <van-tabbar-item icon="smile-o" to="/social">广场</van-tabbar-item>
-        <van-tabbar-item icon="chat-o" to="/ai-assistant">养护</van-tabbar-item>
+        <van-tabbar-item icon="service-o" to="/ai-assistant">AI养育</van-tabbar-item>
         <van-tabbar-item icon="apps-o" to="/emotions">喵喵台</van-tabbar-item>
-        <van-tabbar-item icon="comment-o" to="/messages">消息</van-tabbar-item>
+        <van-tabbar-item icon="comment-o" to="/messages" :badge="messageBadge">消息</van-tabbar-item>
         <van-tabbar-item icon="user-o" to="/profile">我的</van-tabbar-item>
       </van-tabbar>
     </div>
@@ -22,10 +22,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { getUnreadSummary } from '@/api/message';
+import { applyNotificationSettings, formatBadgeCount, SETTINGS_CHANGED_EVENT, type UnreadSummary } from '@/utils/userSettings';
 
 const route = useRoute();
+const unreadSummary = ref<UnreadSummary>({ privateMessages: 0, comments: 0, likes: 0, followers: 0, total: 0 });
+let unreadTimer: ReturnType<typeof setInterval> | null = null;
 
 // 判断逻辑：如果是登录页，就不显示底部导航栏
 const showTabbar = computed(() => {
@@ -38,6 +42,43 @@ const showTabbar = computed(() => {
 });
 
 const isAiAssistant = computed(() => route.name === 'AIAssistant');
+const messageBadge = computed(() => formatBadgeCount(unreadSummary.value.total) || undefined);
+
+const refreshUnreadSummary = async () => {
+  if (!localStorage.getItem('token')) {
+    unreadSummary.value = { privateMessages: 0, comments: 0, likes: 0, followers: 0, total: 0 };
+    return;
+  }
+  try {
+    const response = await getUnreadSummary();
+    unreadSummary.value = applyNotificationSettings(response.data);
+  } catch {
+    unreadSummary.value = applyNotificationSettings(unreadSummary.value);
+  }
+};
+
+const handleSettingsChanged = () => {
+  unreadSummary.value = applyNotificationSettings(unreadSummary.value);
+  void refreshUnreadSummary();
+};
+
+watch(() => route.fullPath, () => {
+  if (showTabbar.value) void refreshUnreadSummary();
+});
+
+onMounted(() => {
+  void refreshUnreadSummary();
+  unreadTimer = setInterval(() => void refreshUnreadSummary(), 10000);
+  window.addEventListener(SETTINGS_CHANGED_EVENT, handleSettingsChanged);
+});
+
+onBeforeUnmount(() => {
+  if (unreadTimer) {
+    clearInterval(unreadTimer);
+    unreadTimer = null;
+  }
+  window.removeEventListener(SETTINGS_CHANGED_EVENT, handleSettingsChanged);
+});
 </script>
 
 <style scoped>

@@ -19,6 +19,11 @@
           <span class="hero-kicker">今日运营</span>
           <div class="hero-number">{{ todayTotal }}</div>
           <p>动态、情绪、消息与 AI 咨询的新增活跃</p>
+          <div class="hero-metrics">
+            <span>今日动态 {{ stats.today_dynamics }}</span>
+            <span>活跃用户 {{ stats.active_users }}</span>
+            <span>管理员 {{ stats.admins }}</span>
+          </div>
         </div>
         <div class="hero-status">
           <span :class="overview?.health.aiConfigured ? 'online' : 'warning'" />
@@ -268,6 +273,9 @@
             <span>DeepSeek API Key</span>
             <input v-model="config.aiApiKey" type="password" placeholder="保持掩码不修改，输入新 key 可更新" />
           </label>
+          <div class="config-safe-note">
+            API Key 仅显示掩码；保留掩码不会覆盖当前密钥。
+          </div>
           <label class="form-field">
             <span>AI Base URL</span>
             <input v-model="config.aiBaseUrl" type="text" placeholder="https://api.deepseek.com" />
@@ -798,6 +806,23 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.hero-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.hero-metrics span,
+.config-safe-note {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.86);
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
 .hero-status {
   display: inline-flex;
   flex-shrink: 0;
@@ -1195,6 +1220,7 @@ onMounted(() => {
 
 .action-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 11px;
@@ -1212,6 +1238,7 @@ onMounted(() => {
 }
 
 .text-btn {
+  flex: 0 1 auto;
   border-radius: 12px;
   background: #eef3f8;
   color: #172033;
@@ -1325,6 +1352,31 @@ onMounted(() => {
   padding: 12px;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.config-safe-note {
+  border-radius: 14px;
+  background: #ecfdf5;
+  color: #047857;
+  line-height: 1.5;
+}
+
+@media (max-width: 380px) {
+  .stat-card {
+    padding: 10px;
+  }
+
+  .card-main {
+    align-items: flex-start;
+  }
+
+  .action-row {
+    justify-content: flex-start;
+  }
+
+  .text-btn {
+    flex: 1 1 calc(50% - 8px);
+  }
 }
 
 .topic-admin .topic-card {

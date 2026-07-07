@@ -64,6 +64,21 @@ def _serialize_cat_profile(cat_profile: CatProfile) -> dict:
     return CatProfileResponse.model_validate(cat_profile).model_dump()
 
 
+def _normalize_vaccine_status(value: str | None) -> str | None:
+    if value is None:
+        return None
+    seen: set[str] = set()
+    items: list[str] = []
+    for raw in re.split(r"[、,，;；\n\r]+", str(value)):
+        item = raw.strip()
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        items.append(item)
+    result = "、".join(items)
+    return result or None
+
+
 @router.post("", response_model=CatProfileResponseEnvelope)
 def create_cat_profile(
     payload: CatProfileCreate,
@@ -72,6 +87,7 @@ def create_cat_profile(
 ):
     payload_data = payload.model_dump()
     payload_data["avatar_url"] = _persist_avatar_if_data_url(payload_data.get("avatar_url"))
+    payload_data["vaccine_status"] = _normalize_vaccine_status(payload_data.get("vaccine_status"))
 
     cat_profile = CatProfile(
         id=str(uuid4()),
@@ -143,6 +159,8 @@ def update_cat_profile(
     update_data = payload.model_dump(exclude_unset=True)
     if "avatar_url" in update_data:
         update_data["avatar_url"] = _persist_avatar_if_data_url(update_data.get("avatar_url"))
+    if "vaccine_status" in update_data:
+        update_data["vaccine_status"] = _normalize_vaccine_status(update_data.get("vaccine_status"))
     for field_name, field_value in update_data.items():
         # Skip None only for non-nullable columns; nullable profile fields may be cleared.
         if field_value is None and field_name in {"name", "is_neutered"}:
