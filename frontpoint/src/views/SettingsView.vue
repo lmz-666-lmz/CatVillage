@@ -37,7 +37,7 @@
 
     <section class="mt-5 rounded-[22px] bg-[rgba(255,255,255,0.92)] border border-[rgba(226,232,240,0.92)] p-2 shadow-[0_12px_26px_rgba(23,32,51,0.06)]">
       <button
-        v-for="item in settingItems"
+        v-for="item in visibleSettingItems"
         :key="item.title"
         type="button"
         class="flex w-full items-center justify-between rounded-[12px] px-3 py-3 text-left"
@@ -56,47 +56,113 @@
       </button>
     </section>
 
+    <!-- 保存更改 -->
     <button
       type="button"
-      class="fixed bottom-7 left-1/2 h-12 w-[calc(100%-40px)] max-w-[430px] -translate-x-1/2 rounded-[16px] bg-[linear-gradient(135deg,#e06912,#f97316)] text-[18px] font-extrabold tracking-tight text-white shadow-[0_12px_28px_rgba(249,115,22,0.28)]"
+      class="mt-5 h-12 w-full rounded-[16px] bg-[linear-gradient(135deg,#e06912,#f97316)] text-[18px] font-extrabold tracking-tight text-white shadow-[0_12px_28px_rgba(249,115,22,0.28)]"
       @click="saveChanges"
     >
       保存更改
     </button>
 
-    <van-action-sheet v-model:show="showNicknameSheet" title="修改用户名">
-      <div class="p-4">
-        <van-field v-model="nicknameDraft" label="用户名" maxlength="24" placeholder="请输入新用户名" />
-        <div class="mt-4 grid grid-cols-2 gap-2">
-          <van-button block plain type="primary" @click="showNicknameSheet = false">取消</van-button>
-          <van-button block type="primary" @click="confirmNickname">确认</van-button>
+    <!-- 退出登录 -->
+    <button
+      type="button"
+      class="mt-3 h-11 w-full rounded-[14px] border border-[#e5e7eb] bg-white text-[15px] font-semibold text-[#748094]"
+      @click="handleLogout"
+    >
+      退出登录
+    </button>
+
+    <!-- 当前版本 -->
+    <button
+      type="button"
+      class="mt-3 mb-8 w-full text-center text-[13px] font-bold text-[#748094]"
+      @click="showVersionDialog = true"
+    >
+      当前版本 V2.3
+    </button>
+
+    <!-- 修改用户名弹窗 -->
+    <van-overlay :show="showNicknameSheet" @click="showNicknameSheet = false">
+      <div class="nickname-dialog-wrapper" @click.stop>
+        <div class="nickname-dialog">
+          <h3 class="nickname-dialog-title">修改用户名</h3>
+          <p class="nickname-dialog-desc">设置一个让猫友记住的名字吧</p>
+          <input
+            v-model="nicknameDraft"
+            type="text"
+            maxlength="24"
+            placeholder="请输入新用户名"
+            class="nickname-dialog-input"
+            @keyup.enter="confirmNickname"
+          />
+          <div class="nickname-dialog-actions">
+            <button type="button" class="nickname-dialog-btn cancel" @click="showNicknameSheet = false">取消</button>
+            <button type="button" class="nickname-dialog-btn confirm" @click="confirmNickname">保存</button>
+          </div>
         </div>
       </div>
-    </van-action-sheet>
+    </van-overlay>
+
+    <!-- 版本介绍弹窗 -->
+    <van-overlay :show="showVersionDialog" @click="showVersionDialog = false">
+      <div class="nickname-dialog-wrapper" @click.stop>
+        <div class="nickname-dialog version-dialog">
+          <h3 class="nickname-dialog-title">CatVillage V2.3</h3>
+          <div class="version-list">
+            <div class="version-item">AI 助手体验优化</div>
+            <div class="version-item">喵喵台与消息体验优化</div>
+            <div class="version-item">后台管理增强</div>
+            <div class="version-item">资源清理机制增强</div>
+          </div>
+          <div class="nickname-dialog-actions">
+            <button type="button" class="nickname-dialog-btn confirm" @click="showVersionDialog = false">知道了</button>
+          </div>
+        </div>
+      </div>
+    </van-overlay>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { showToast } from 'vant';
+import { showConfirmDialog, showToast } from 'vant';
 import type { UploaderFileListItem } from 'vant';
 import { getMe, updateUserProfile } from '@/api/auth';
-import { getUserDisplayProfile, patchUserDisplayProfile, setCurrentUserIdentity } from '@/utils/userProfile';
+import { clearAccountRuntimeState, getUserDisplayProfile, patchUserDisplayProfile, setCurrentUserIdentity } from '@/utils/userProfile';
+import { useCatsStore, useCurrentCatStore } from '@/stores';
 
 const router = useRouter();
+const catsStore = useCatsStore();
+const currentCatStore = useCurrentCatStore();
 
 const avatarUrl = ref('');
 const nickname = ref('');
 const miaoId = ref('');
 const nicknameDraft = ref('');
 const showNicknameSheet = ref(false);
+const showVersionDialog = ref(false);
+const isAdmin = ref(false);
 
-const settingItems = [
+interface SettingItem {
+  icon: string;
+  title: string;
+  desc: string;
+  routeName: string;
+  adminOnly?: boolean;
+}
+
+const allSettingItems: SettingItem[] = [
   { icon: 'bell', title: '通知设置', desc: '管理提醒与消息推送', routeName: 'SettingsNotification' },
   { icon: 'lock', title: '隐私设置', desc: '控制资料可见性与互动权限', routeName: 'SettingsPrivacy' },
-  { icon: 'manager-o', title: '后台管理', desc: '管理员查看用户、内容与数据', routeName: 'AdminDashboard' }
-] as const;
+  { icon: 'manager-o', title: '后台管理', desc: '管理员查看用户、内容与数据', routeName: 'AdminDashboard', adminOnly: true }
+];
+
+const visibleSettingItems = computed(() =>
+  allSettingItems.filter(item => !item.adminOnly || isAdmin.value)
+);
 
 const syncProfileToServer = async (profile: { nickname?: string; avatarUrl?: string }) => {
   const token = localStorage.getItem('token');
@@ -185,11 +251,142 @@ const saveChanges = async () => {
   }
 };
 
+const handleLogout = async () => {
+  try {
+    await showConfirmDialog({ title: '退出登录', message: '确认退出当前账号？' });
+  } catch {
+    return;
+  }
+  clearAccountRuntimeState({ includeToken: true });
+  catsStore.clearCats();
+  currentCatStore.clearCurrentCat();
+  showToast({ message: '已退出登录' });
+  router.replace({ name: 'Login' });
+};
+
 const handleBack = () => {
   router.back();
 };
 
 onMounted(() => {
+  isAdmin.value = localStorage.getItem('is_admin') === 'true';
   void hydrate();
 });
 </script>
+
+<style scoped>
+/* ========== NICKNAME / VERSION DIALOG ========== */
+.nickname-dialog-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 0 24px;
+}
+
+.nickname-dialog {
+  width: 100%;
+  max-width: 340px;
+  background: #fff;
+  border-radius: 24px;
+  padding: 28px 24px 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: dialogIn 0.2s ease-out;
+}
+
+@keyframes dialogIn {
+  from { opacity: 0; transform: scale(0.92) translateY(12px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.nickname-dialog-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  color: #172033;
+  text-align: center;
+}
+
+.nickname-dialog-desc {
+  margin: 6px 0 18px;
+  font-size: 13px;
+  color: #748094;
+  text-align: center;
+}
+
+.nickname-dialog-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 46px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 0 14px;
+  font-size: 15px;
+  color: #172033;
+  outline: none;
+  font-weight: 700;
+}
+
+.nickname-dialog-input:focus {
+  border-color: #f97316;
+  background: #fff;
+}
+
+.nickname-dialog-input::placeholder {
+  color: #b0b8c4;
+}
+
+.nickname-dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.nickname-dialog-btn {
+  height: 44px;
+  border: none;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+
+.nickname-dialog-btn:active {
+  transform: scale(0.96);
+}
+
+.nickname-dialog-btn.cancel {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.nickname-dialog-btn.confirm {
+  background: linear-gradient(135deg, #e06912, #f97316);
+  color: #fff;
+  box-shadow: 0 8px 20px rgba(249, 115, 22, 0.25);
+}
+
+/* ========== VERSION DIALOG ========== */
+.version-dialog .nickname-dialog-actions {
+  grid-template-columns: 1fr;
+}
+
+.version-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0 4px;
+}
+
+.version-item {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #f4f7fb;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 700;
+}
+</style>

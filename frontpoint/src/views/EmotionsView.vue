@@ -22,9 +22,12 @@
       </section>
 
       <section v-else class="empty-panel">
-        <div class="empty-icon"><van-icon name="smile-o" size="40" /></div>
+        <div class="empty-illustration">
+          <span class="empty-emoji">🐱</span>
+          <div class="empty-paws"><span>🐾</span><span>🐾</span><span>🐾</span></div>
+        </div>
         <strong>还没有猫咪伙伴</strong>
-        <span>添加一只猫咪，开启情绪识别</span>
+        <span>添加猫咪后，就能识别猫叫情绪并记录历史</span>
         <button type="button" @click="router.push({ name: 'AddCat' })">
           <van-icon name="plus" size="17" />
           添加猫咪
@@ -812,26 +815,48 @@ watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refre
   min-height: 220px;
   place-items: center;
   gap: 8px;
-  padding: 24px;
+  padding: 36px 24px;
   text-align: center;
   color: var(--cv-muted);
+  background: linear-gradient(135deg, #fff8f4 0%, #fff 40%, #fef5ff 100%);
+  border: 2px dashed #ffe0cc;
 }
 
-.empty-icon {
-  display: grid;
-  width: 76px;
-  height: 76px;
-  place-items: center;
-  border-radius: 24px;
-  background: rgba(249,115,22,0.08);
-  color: var(--cv-accent);
+.empty-illustration {
+  display: inline-block;
+  margin-bottom: 4px;
 }
+
+.empty-emoji {
+  font-size: 60px;
+  display: block;
+  filter: drop-shadow(0 4px 8px rgba(255,107,53,0.15));
+  animation: catFloat 3s ease-in-out infinite;
+}
+
+.empty-paws {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: -8px;
+}
+
+.empty-paws span {
+  font-size: 16px;
+  animation: pawBounce 1.5s ease-in-out infinite;
+}
+
+.empty-paws span:nth-child(2) { animation-delay: 0.2s; }
+.empty-paws span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes catFloat { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+@keyframes pawBounce { 0%,100%{transform:scale(1);opacity:.5} 50%{transform:scale(1.2);opacity:1} }
 
 .empty-panel strong,
 .records-empty strong {
   color: var(--cv-ink);
-  font-size: 17px;
-  font-weight: 900;
+  font-size: 18px;
+  font-weight: 800;
 }
 
 .empty-panel button {
@@ -839,11 +864,13 @@ watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refre
   align-items: center;
   gap: 6px;
   border: 0;
-  border-radius: 14px;
-  background: var(--cv-ink);
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--cv-accent), #14b8a6);
   color: #fff;
-  padding: 11px 16px;
-  font-weight: 900;
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(249,115,22,0.3);
 }
 
 .listen-panel {

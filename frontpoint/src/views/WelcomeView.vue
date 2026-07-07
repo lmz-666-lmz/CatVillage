@@ -12,15 +12,15 @@
       跳过
     </button>
 
-    <section class="relative z-10 mt-16 text-center">
-      <div class="mx-auto mb-6 grid h-[112px] w-[112px] place-items-center rounded-[30px] bg-white/70 shadow-[0_14px_34px_rgba(249,115,22,0.18)] backdrop-blur overflow-hidden">
+    <section class="relative z-10 mt-8 text-center">
+      <div class="mx-auto mb-4 grid h-[88px] w-[88px] place-items-center rounded-[24px] bg-white/70 shadow-[0_14px_34px_rgba(249,115,22,0.18)] backdrop-blur overflow-hidden">
         <img src="/logo.png" alt="猫村" class="h-full w-full object-cover" />
       </div>
-      <h1 class="text-[36px] font-black tracking-tight text-[#172033]">欢迎来到猫村</h1>
-      <p class="mt-4 text-[20px] font-semibold text-[#748094]">记录每只猫咪的情绪、健康和日常点滴</p>
+      <h1 class="text-[28px] font-black tracking-tight text-[#172033]">欢迎来到猫村</h1>
+      <p class="mt-3 text-[17px] font-semibold text-[#748094]">记录每只猫咪的情绪、健康和日常点滴</p>
     </section>
 
-    <section class="relative z-10 mt-14 space-y-4">
+    <section class="relative z-10 mt-8 space-y-3">
       <div class="rounded-3xl border border-white/70 bg-white/65 p-5 backdrop-blur">
         <div class="flex items-center gap-3 text-[#172033]">
           <van-icon name="chat-o" size="22" />
@@ -38,7 +38,7 @@
       </div>
     </section>
 
-    <div class="relative z-10 mt-10">
+    <div class="relative z-10 mt-8">
       <button
         type="button"
         class="h-14 w-full rounded-2xl bg-gradient-to-br from-[#e06912] to-[#f97316] text-lg font-extrabold text-white shadow-[0_12px_28px_rgba(249,115,22,0.28)]"

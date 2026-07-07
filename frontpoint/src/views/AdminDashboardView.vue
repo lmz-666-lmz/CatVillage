@@ -414,10 +414,11 @@ const statItems = computed(() => [
   { label: '猫咪', value: stats.value.pets, icon: 'smile-o', target: 'pets' as TabKey },
   { label: '内容', value: stats.value.dynamics, icon: 'photo-o', target: 'content' as TabKey },
   { label: '识别', value: stats.value.emotion_records, icon: 'music-o', target: 'signals' as TabKey },
-  { label: '今日用户', value: stats.value.today_users, icon: 'contact' as const, target: 'users' as TabKey },
-  { label: '今日动态', value: stats.value.today_dynamics, icon: 'fire-o' as const, target: 'content' as TabKey },
+  { label: '热点话题', value: hotTopics.value.length || 3, icon: 'fire-o', target: 'topics' as TabKey },
+  { label: '今日动态', value: stats.value.today_dynamics, icon: 'fire-o', target: 'content' as TabKey },
   { label: '健康', value: stats.value.health_records, icon: 'bar-chart-o', target: 'health' as TabKey },
-  { label: '消息', value: stats.value.messages, icon: 'chat-o', target: 'messages' as TabKey }
+  { label: '消息', value: stats.value.messages, icon: 'chat-o', target: 'messages' as TabKey },
+  { label: '配置', value: 1, icon: 'setting-o', target: 'system' as TabKey }
 ]);
 
 const todayTotal = computed(() => {

@@ -72,3 +72,36 @@ export const parseCatAgeToMonths = (value: string): number | undefined => {
 
   return undefined;
 };
+
+/** 年龄校验结果 */
+export interface AgeValidation {
+  valid: boolean;
+  ageMonths?: number;
+  error?: string;
+}
+
+/** 校验年龄输入是否合法，空值视为合法（表示未知） */
+export const validateAgeInput = (value: string): AgeValidation => {
+  const raw = value.trim();
+  if (!raw) {
+    return { valid: true }; // 年龄未知允许提交
+  }
+
+  const months = parseCatAgeToMonths(raw);
+  if (months === undefined) {
+    return {
+      valid: false,
+      error: '年龄格式不正确，请填写如 2岁、6个月、2岁3个月'
+    };
+  }
+
+  // 年龄范围 0 到 30 岁（0 到 360 个月）
+  if (months < 0 || months > 360) {
+    return {
+      valid: false,
+      error: '年龄范围需在 0 到 30 岁之间'
+    };
+  }
+
+  return { valid: true, ageMonths: months };
+};

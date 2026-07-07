@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.config import UPLOAD_MAX_BYTES
 from app.core.dependencies import get_current_user
 from app.core.model_service import analyze_audio
+from app.core.storage import safe_delete_file
 from app.database.session import get_db
 from app.models.cat_profile import CatProfile
 from app.models.emotion_record import EmotionRecord
@@ -239,8 +240,17 @@ def delete_emotion_record(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Emotion record not found")
 
     _ensure_pet_owner(db, record.pet_id, current_user.id)
+
+    # 提取音频路径（在删除数据库记录之前）
+    audio_path = _get_record_audio_path(record)
+
     db.delete(record)
     db.commit()
+
+    # 数据库提交成功后再尝试删除物理文件
+    if audio_path:
+        safe_delete_file(audio_path)
+
     return {"code": 200, "msg": "删除成功", "data": {"success": True}}
 
 

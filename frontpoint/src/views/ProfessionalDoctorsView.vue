@@ -29,8 +29,8 @@
         </div>
         <h2 class="mt-4 text-[22px] font-black">视频咨询</h2>
         <p class="mt-1 text-[14px] leading-relaxed text-white/90">面对面远程诊断，深度沟通更高效</p>
-        <div class="pointer-events-none absolute bottom-3 right-3 rounded-2xl bg-white/15 p-3">
-          <van-icon name="plus" size="28" />
+        <div class="pointer-events-none absolute bottom-3 right-3 rounded-2xl bg-white/15 px-3 py-1.5">
+          <span class="text-[11px] font-bold text-white/80">演示功能</span>
         </div>
       </article>
     </section>

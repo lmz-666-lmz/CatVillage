@@ -18,6 +18,7 @@ type BackendChatResponse = {
     breed?: string | null;
     age?: number | null;
     latest_weight?: number | null;
+    emotion_records_count?: number;
   };
 };
 
@@ -33,7 +34,8 @@ const toChatMessage = (data: BackendChatResponse): ChatWithAIResponse => ({
   sessionId: data.pet_id,
   message: data.reply,
   role: 'assistant',
-  timestamp: new Date().toISOString()
+  timestamp: new Date().toISOString(),
+  emotionRecordsCount: data.used_context?.emotion_records_count ?? 0
 });
 
 // 发起对话提问
@@ -45,7 +47,7 @@ export function chatWithAI(data: ChatWithAIRequest): Promise<ApiResponse<ChatWit
     timeout: 60000,
     data: {
       pet_id: data.catId,
-      user_message: `${data.message}\n\n请简短回答：3-5条要点，每条不超过30字。`
+      user_message: data.message
     }
   }).then((response) => ({
     ...response,

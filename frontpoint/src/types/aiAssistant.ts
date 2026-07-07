@@ -14,6 +14,7 @@ export interface ChatWithAIResponse {
   message: string;
   role: 'user' | 'assistant';
   timestamp: string;
+  emotionRecordsCount?: number;
 }
 
 export interface ChatHistoryEntry {

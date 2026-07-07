@@ -11,6 +11,7 @@ from app.core.dependencies import get_current_user
 from app.database.session import get_db
 from app.models.ai_chat_history import AIChatHistory
 from app.models.cat_profile import CatProfile
+from app.models.emotion_record import EmotionRecord
 from app.models.health import PetWeight
 from app.models.user import User
 from app.schemas.ai_assistant import ChatHistoryResponse, ChatRequest
@@ -124,6 +125,23 @@ async def chat(
         .first()
     )
 
+    # 读取最近 5 条喵喵台情绪记录，拼入 AI 上下文
+    recent_emotions = (
+        db.query(EmotionRecord)
+        .filter(EmotionRecord.pet_id == request.pet_id)
+        .order_by(EmotionRecord.record_time.desc())
+        .limit(5)
+        .all()
+    )
+    if recent_emotions:
+        emotion_lines = []
+        for record in recent_emotions:
+            conf_pct = f"{int(round((record.confidence or 0) * 100))}%" if record.confidence is not None else "未知"
+            emotion_lines.append(f"{record.label} {conf_pct}")
+        emotion_context = "最近喵喵台情绪记录：" + "，".join(emotion_lines) + "。"
+    else:
+        emotion_context = "暂无喵喵台情绪记录。"
+
     weight_text = (
         f"最近一次体重为{latest_weight.weight}kg（记录时间：{latest_weight.record_date}）。"
         if latest_weight
@@ -139,6 +157,7 @@ async def chat(
         f"性别{cat_profile.gender if cat_profile.gender is not None else '未知'}，"
         f"绝育状态{'已绝育' if cat_profile.is_neutered else '未绝育'}，"
         f"病史{cat_profile.medical_history or '无'}，{weight_text}"
+        f"{emotion_context}"
         "请避免给出超出普通养护场景的高风险医疗结论，必要时提醒线下就医。"
     )
 
@@ -182,6 +201,7 @@ async def chat(
                 "breed": cat_profile.breed,
                 "age": cat_profile.age,
                 "latest_weight": latest_weight.weight if latest_weight else None,
+                "emotion_records_count": len(recent_emotions),
             },
         },
     }

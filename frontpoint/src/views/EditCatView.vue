@@ -97,8 +97,12 @@
                 v-model="form.ageBirthdayText"
                 type="text"
                 placeholder="2岁 / 2022-05"
-                class="h-12 w-full rounded-2xl border border-[rgba(226,232,240,0.92)] bg-white px-4 text-[15px] text-[#172033] outline-none placeholder:text-[#748094]"
+                class="h-12 w-full rounded-2xl border bg-white px-4 text-[15px] text-[#172033] outline-none placeholder:text-[#748094]"
+                :class="ageError ? 'border-red-400' : 'border-[rgba(226,232,240,0.92)]'"
+                @blur="validateAge"
               />
+              <p v-if="ageError" class="mt-1.5 text-[12px] font-semibold text-red-500">{{ ageError }}</p>
+              <p v-else class="mt-1.5 text-[11px] text-[#748094]">例如：2岁、6个月、2岁3个月，留空表示年龄未知</p>
             </div>
 
             <div>
@@ -213,7 +217,7 @@ import { useCatManagement } from '@/composables/useCatManagement';
 import { useCatsStore } from '@/stores';
 import type { UpdateCatProfileRequest } from '@/types/cat';
 import { CAT_BREED_OPTIONS } from '@/constants/catBreeds';
-import { formatCatAge, parseCatAgeToMonths } from '@/utils/age';
+import { formatCatAge, parseCatAgeToMonths, validateAgeInput } from '@/utils/age';
 
 interface EditCatFormState {
   name: string;
@@ -235,6 +239,7 @@ const error = ref<string | null>(null);
 
 const avatarInputRef = ref<HTMLInputElement | null>(null);
 const avatarPreviewUrl = ref<string>('');
+const ageError = ref<string | null>(null);
 
 const form = ref<EditCatFormState>({
   name: '',
@@ -255,6 +260,11 @@ const breedOptions = CAT_BREED_OPTIONS.map((option) => ({
 }));
 
 const cat = computed(() => catsStore.getCatById(props.id));
+
+const validateAge = (): void => {
+  const result = validateAgeInput(form.value.ageBirthdayText);
+  ageError.value = result.valid ? null : (result.error || null);
+};
 
 const openAvatarPicker = (): void => {
   avatarInputRef.value?.click();
@@ -334,6 +344,13 @@ const save = async () => {
   }
   if (!form.value.breed) {
     showToast({ type: 'fail', message: '请选择猫咪品种' });
+    return;
+  }
+  // 校验年龄
+  const ageResult = validateAgeInput(form.value.ageBirthdayText);
+  if (!ageResult.valid) {
+    ageError.value = ageResult.error || null;
+    showToast({ type: 'fail', message: ageResult.error || '年龄格式不正确' });
     return;
   }
 

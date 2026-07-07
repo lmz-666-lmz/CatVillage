@@ -4,15 +4,15 @@
     <div class="pointer-events-none absolute -bottom-16 -right-12 h-[200px] w-[200px] rounded-full border-[20px] border-[#f3eaf2]/70"></div>
     <div class="pointer-events-none absolute -bottom-4 -right-4 h-[140px] w-[140px] rounded-full border-[14px] border-[#f1e7f0]/80"></div>
 
-    <header class="relative z-10 mt-8 text-center">
-      <div class="mx-auto mb-5 grid h-[96px] w-[96px] place-items-center rounded-[24px] bg-[#fceee9] overflow-hidden">
+    <header class="relative z-10 mt-3 text-center">
+      <div class="mx-auto mb-3 grid h-[72px] w-[72px] place-items-center rounded-[20px] bg-[#fceee9] overflow-hidden">
         <img src="/logo.png" alt="猫村" class="h-full w-full object-cover" />
       </div>
-      <h1 class="text-2xl font-black text-[#172033] tracking-tight">猫村</h1>
-      <p class="mt-1 text-[14px] text-[#748094]">Mao Village</p>
+      <h1 class="text-xl font-black text-[#172033] tracking-tight">猫村</h1>
+      <p class="mt-0.5 text-[13px] text-[#748094]">Mao Village</p>
     </header>
 
-    <van-form class="relative z-10 mt-12 space-y-7" @submit="onSubmit">
+    <van-form class="relative z-10 mt-6 space-y-5" @submit="onSubmit">
       <div>
         <div class="mb-3 text-[15px] font-bold text-[#172033]">用户名</div>
         <div class="flex h-12 items-center rounded-2xl border border-[rgba(226,232,240,0.92)] bg-white px-4">
@@ -52,13 +52,13 @@
       </button>
     </van-form>
 
-    <div class="relative z-10 mt-5 text-right text-[14px]">
+    <div class="relative z-10 mt-4 text-right text-[13px]">
       <button type="button" class="font-bold text-[#748094]" @click="showToast({ message: '忘记密码功能稍后上线', duration: 1500 })">
         忘记密码？
       </button>
     </div>
 
-    <div class="relative z-10 mt-8 text-center text-[18px] text-[#748094]">
+    <div class="relative z-10 mt-6 text-center text-[16px] text-[#748094]">
       还没有账号？
       <router-link class="ml-2 font-black text-[#f97316]" to="/register">立即注册</router-link>
     </div>

@@ -10,7 +10,7 @@ from sqlalchemy import func, update
 
 from app.core.dependencies import get_current_user
 from app.core.dependencies import get_optional_current_user
-from app.core.storage import storage_service
+from app.core.storage import safe_delete_file, storage_service
 from app.database.session import get_db
 from app.models.cat_profile import CatProfile
 from app.models.social import SocialComment, SocialCommentLike, SocialDynamic, SocialFavorite, SocialFollow, SocialLike
@@ -864,6 +864,9 @@ def delete_dynamic(
     if dynamic.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed")
 
+    # 提取图片路径（在删除数据库记录之前）
+    image_urls = _parse_images(dynamic.images)
+
     comment_ids = [
         comment_id
         for (comment_id,) in db.query(SocialComment.id)
@@ -877,6 +880,13 @@ def delete_dynamic(
     db.query(SocialFavorite).filter(SocialFavorite.dynamic_id == dynamic_id).delete(synchronize_session=False)
     db.delete(dynamic)
     db.commit()
+
+    # 数据库提交成功后再尝试删除物理图片文件
+    for url in image_urls:
+        # API 路径如 /api/v1/uploads/social/xxx.jpg 转换为本地路径
+        if url.startswith("/api/v1/uploads/"):
+            file_path = Path(__file__).resolve().parents[3] / "uploads" / url[len("/api/v1/uploads/"):]
+            safe_delete_file(str(file_path))
 
     return ResponseEnvelope(data=DeleteResponse(success=True))
 

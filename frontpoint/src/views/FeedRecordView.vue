@@ -290,7 +290,7 @@ const selectedCatId = computed(() => {
 });
 const cats = computed(() => catsStore.getAllCats);
 
-const catAge = (age?: number) => {
+const catAge = (age?: number | null) => {
   if (!age || age <= 0) return '未知年龄';
   if (age < 12) return `${age} 个月`;
   return `${Math.floor(age / 12)} 岁`;

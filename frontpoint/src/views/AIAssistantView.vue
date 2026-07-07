@@ -1,8 +1,8 @@
 <template>
   <div class="ai-page">
-    <AppTopBar title="AI 养育助手" subtitle="根据猫咪档案给出简短建议">
+    <AppTopBar title="AI 养育助手" subtitle="根据猫咪档案给出简短建议" kicker="AI Care">
       <template #actions>
-        <button class="topbar-action clear-action" type="button" @click="handleClearHistory">清空</button>
+        <button class="topbar-action" type="button" @click="handleClearHistory">清空</button>
       </template>
     </AppTopBar>
 
@@ -31,6 +31,9 @@
           <span>健康状态：{{ petInfo.status }}</span>
           <span>健康分：{{ petInfo.score }}</span>
           <span>绝育：{{ selectedCat.isNeutered ? '已绝育' : '未绝育' }}</span>
+          <span class="col-span-full text-[11px] text-[#0f766e] font-bold">
+            {{ lastEmotionRefCount > 0 ? `已参考最近 ${lastEmotionRefCount} 条喵喵台记录` : '暂无喵喵台情绪记录' }}
+          </span>
         </div>
         <div v-if="petCardExpanded" class="ai-pet-actions">
           <button type="button" class="ai-pet-action" @click="openCatSwitcher">
@@ -55,8 +58,8 @@
         </button>
       </section>
 
-      <!-- Chat Area -->
-      <section ref="chatScrollRef" class="ai-chat">
+      <!-- Chat Area (hidden when no cat) -->
+      <section v-if="selectedCat" ref="chatScrollRef" class="ai-chat">
         <template v-for="msg in messages" :key="msg.id">
           <!-- AI message -->
           <div v-if="msg.role !== 'user'" class="ai-msg ai-msg--bot">
@@ -107,8 +110,8 @@
 
     </main>
 
-    <!-- Bottom Input -->
-    <div class="ai-input-bar">
+    <!-- Bottom Input (hidden when no cat) -->
+    <div v-if="selectedCat" class="ai-input-bar">
       <section class="ai-chip-row">
         <button v-for="(item, idx) in actionCards" :key="idx" class="ai-chip" type="button" @click="handleActionClick(item)">
           <van-icon :name="item.icon" size="15" />
@@ -163,6 +166,7 @@ const consultInputRef = ref<HTMLInputElement | null>(null);
 const chatScrollRef = ref<HTMLElement | null>(null);
 const showCatSheet = ref(false);
 const petCardExpanded = ref(false);
+const lastEmotionRefCount = ref(0);
 const sending = computed(() => isLoading.value);
 const defaultAvatar = DEFAULT_CAT_AVATAR;
 const messages = ref<ChatItem[]>([]);
@@ -224,7 +228,8 @@ const handleSend = async () => {
   void scrollChatToBottom();
   try {
     const result = await sendMessageToAI({ catId, message });
-    messages.value.push({ id: result.id || `a-${Date.now()}`, role: 'assistant', content: result.message || '抱歉，我暂时没有生成有效回复。' });
+    messages.value.push({ id: result.id || `a-${Date.now()}`, role: 'assistant', content: result.message });
+    if (typeof result.emotionRecordsCount === 'number') lastEmotionRefCount.value = result.emotionRecordsCount;
     void scrollChatToBottom();
   } catch (err: any) {
     const msg = String(err?.message || '');
@@ -298,14 +303,11 @@ const buildAssistantSections = (content: string) => {
 <style scoped>
 /* ========== PAGE ========== */
 .ai-page {
-  width: 100%;
-  max-width: var(--app-mobile-width, 430px);
-  height: calc(100dvh - var(--app-tabbar-height, 50px) - env(safe-area-inset-bottom, 0px));
+  height: calc(100dvh - var(--app-tabbar-height, 50px));
   display: flex;
   flex-direction: column;
   overflow: hidden;
   background: var(--cv-page-gradient);
-  margin: 0 auto;
 }
 .ai-main {
   display: flex;
@@ -440,18 +442,7 @@ const buildAssistantSections = (content: string) => {
   display: none;
 }
 
-.clear-action {
-  width: auto !important;
-  padding: 0 12px;
-  color: var(--cv-accent) !important;
-  font-size: 12px;
-  font-weight: 900;
-}
-
-/* Fix title left-alignment when no back button */
-.ai-page :deep(.app-topbar-row) {
-  padding-left: 4px;
-}
+/* Action button uses AppTopBar default .topbar-action style — consistent with MessagesView */
 
 .ai-pet-card,
 .ai-section,

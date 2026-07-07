@@ -9,8 +9,11 @@ from sqlalchemy.orm import Session
 
 from app.core.config import UPLOAD_MAX_BYTES
 from app.core.dependencies import get_current_user
+from app.core.storage import safe_delete_file
 from app.database.session import get_db
 from app.models.cat_profile import CatProfile
+from app.models.emotion_record import EmotionRecord
+from app.models.health import PetWeight, FeedingRecord
 from app.models.user import User
 from app.schemas.cat_profile import (
     CatProfileActionResponseEnvelope,
@@ -165,6 +168,42 @@ def delete_cat_profile(
     if cat_profile is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cat profile not found")
 
+    # 提取需要清理的文件路径
+    avatar_to_delete = cat_profile.avatar_url
+
+    # 提取情绪记录中的音频路径
+    emotion_records = (
+        db.query(EmotionRecord)
+        .filter(EmotionRecord.pet_id == profile_id)
+        .all()
+    )
+    audio_paths_to_delete: list[str] = []
+    import json as _json
+    for record in emotion_records:
+        if record.raw_result:
+            try:
+                raw = _json.loads(record.raw_result)
+                p = raw.get("_audio_path") if isinstance(raw, dict) else None
+                if isinstance(p, str) and p:
+                    audio_paths_to_delete.append(p)
+            except _json.JSONDecodeError:
+                pass
+
+    # 删除关联数据：情绪记录、投喂记录、体重记录
+    db.query(EmotionRecord).filter(EmotionRecord.pet_id == profile_id).delete()
+    db.query(FeedingRecord).filter(FeedingRecord.pet_id == profile_id).delete()
+    db.query(PetWeight).filter(PetWeight.pet_id == profile_id).delete()
+
     db.delete(cat_profile)
     db.commit()
+
+    # 数据库提交成功后再尝试删除物理文件
+    avatar_path = None
+    if avatar_to_delete and avatar_to_delete.startswith("/api/v1/uploads/"):
+        avatar_path = str(UPLOAD_ROOT / avatar_to_delete[len("/api/v1/uploads/"):])
+    if avatar_path:
+        safe_delete_file(avatar_path)
+    for audio_path in audio_paths_to_delete:
+        safe_delete_file(audio_path)
+
     return {"code": 200, "msg": "删除成功", "data": None}

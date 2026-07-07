@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
+import json
 import os
 from collections import Counter
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
@@ -11,6 +13,7 @@ import app.api.v1.social as social_module
 import app.core.config as runtime_config
 from app.core.dependencies import get_current_user
 from app.core.security import get_password_hash
+from app.core.storage import safe_delete_file
 from app.database.session import get_db
 from app.models.ai_chat_history import AIChatHistory
 from app.models.cat_profile import CatProfile
@@ -41,6 +44,18 @@ def _page(query, page: int, page_size: int):
     total = query.count()
     items = query.offset((page - 1) * page_size).limit(page_size).all()
     return total, items
+
+
+def _admin_parse_images(raw_images: str | None) -> list[str]:
+    if not raw_images:
+        return []
+    try:
+        parsed = json.loads(raw_images)
+    except (TypeError, json.JSONDecodeError):
+        return []
+    if not isinstance(parsed, list):
+        return []
+    return [str(item) for item in parsed if isinstance(item, str) and item.strip()]
 
 
 def _safe_iso(value):
@@ -387,6 +402,9 @@ def delete_dynamic(
     dynamic = db.query(SocialDynamic).filter(SocialDynamic.id == dynamic_id).first()
     if dynamic is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dynamic not found")
+
+    image_urls = _admin_parse_images(dynamic.images)
+
     comment_ids = [
         comment_id
         for (comment_id,) in db.query(SocialComment.id)
@@ -400,6 +418,12 @@ def delete_dynamic(
     db.query(SocialFavorite).filter(SocialFavorite.dynamic_id == dynamic_id).delete(synchronize_session=False)
     db.delete(dynamic)
     db.commit()
+
+    for url in image_urls:
+        if url.startswith("/api/v1/uploads/"):
+            file_path = Path(__file__).resolve().parents[3] / "uploads" / url[len("/api/v1/uploads/"):]
+            safe_delete_file(str(file_path))
+
     return envelope({"success": True})
 
 
@@ -600,7 +624,37 @@ def update_admin_config(
 def delete_pet(pet_id: str, _admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     pet = db.query(CatProfile).filter(CatProfile.id == pet_id).first()
     if pet is None: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pet not found")
+
+    avatar_to_delete = pet.avatar_url
+
+    # 提取情绪记录中的音频路径
+    emotion_records = db.query(EmotionRecord).filter(EmotionRecord.pet_id == pet_id).all()
+    audio_paths: list[str] = []
+    import json as _json2
+    for rec in emotion_records:
+        if rec.raw_result:
+            try:
+                raw = _json2.loads(rec.raw_result)
+                p = raw.get("_audio_path") if isinstance(raw, dict) else None
+                if isinstance(p, str) and p:
+                    audio_paths.append(p)
+            except _json2.JSONDecodeError:
+                pass
+
+    # 删除关联数据
+    db.query(EmotionRecord).filter(EmotionRecord.pet_id == pet_id).delete()
+    db.query(FeedingRecord).filter(FeedingRecord.pet_id == pet_id).delete()
+    db.query(PetWeight).filter(PetWeight.pet_id == pet_id).delete()
+
     db.delete(pet); db.commit()
+
+    # 清理物理文件
+    if avatar_to_delete and avatar_to_delete.startswith("/api/v1/uploads/"):
+        avatar_path = str(Path(__file__).resolve().parents[3] / "uploads" / avatar_to_delete[len("/api/v1/uploads/"):])
+        safe_delete_file(avatar_path)
+    for ap in audio_paths:
+        safe_delete_file(ap)
+
     return envelope({"success": True})
 
 
@@ -608,7 +662,24 @@ def delete_pet(pet_id: str, _admin: User = Depends(require_admin), db: Session =
 def delete_emotion_record(record_id: int, _admin: User = Depends(require_admin), db: Session = Depends(get_db)):
     rec = db.query(EmotionRecord).filter(EmotionRecord.id == record_id).first()
     if rec is None: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Record not found")
+
+    # 提取音频路径
+    audio_path = None
+    if rec.raw_result:
+        import json as _json3
+        try:
+            raw = _json3.loads(rec.raw_result)
+            p = raw.get("_audio_path") if isinstance(raw, dict) else None
+            if isinstance(p, str) and p:
+                audio_path = p
+        except _json3.JSONDecodeError:
+            pass
+
     db.delete(rec); db.commit()
+
+    if audio_path:
+        safe_delete_file(audio_path)
+
     return envelope({"success": True})
 
 
