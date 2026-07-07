@@ -206,7 +206,7 @@
           />
           <button
             type="button"
-            class="rounded-2xl bg-[#172033] px-4 text-[14px] font-bold text-white active:scale-95"
+            class="h-11 rounded-2xl bg-[#f97316] px-5 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(249,115,22,0.22)] transition-all active:scale-95"
             @click="addCustomVaccine"
           >
             添加
