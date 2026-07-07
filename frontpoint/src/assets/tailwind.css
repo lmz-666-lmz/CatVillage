@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@config "../../tailwind.config.cjs";
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+:root {
+  color-scheme: light;
+
+  /* ── Core palette ── */
+  --cv-ink: #172033;
+  --cv-muted: #748094;
+  --cv-accent: #f97316;
+  --cv-accent-dark: #e06912;
+  --cv-teal: #14b8a6;
+  --cv-surface: #ffffff;
+  --cv-page: #f5f7fb;
+
+  /* ── Semantic tokens ── */
+  --cv-text-primary: var(--cv-ink);
+  --cv-text-secondary: var(--cv-muted);
+  --cv-text-placeholder: #9ca3af;
+
+  /* ── Card ── */
+  --cv-card-bg: rgba(255, 255, 255, 0.92);
+  --cv-card-border: rgba(226, 232, 240, 0.92);
+  --cv-card-radius: 22px;
+  --cv-card-shadow: 0 12px 26px rgba(23, 32, 51, 0.06);
+
+  /* ── Button (primary) ── */
+  --cv-btn-height: 56px;
+  --cv-btn-radius: 16px;
+  --cv-btn-gradient: linear-gradient(135deg, var(--cv-accent-dark), var(--cv-accent));
+  --cv-btn-shadow: 0 12px 28px rgba(249, 115, 22, 0.28);
+  --cv-btn-font-size: 18px;
+  --cv-btn-font-weight: 800;
+
+  /* ── Input ── */
+  --cv-input-height: 48px;
+  --cv-input-radius: 14px;
+  --cv-input-border: rgba(226, 232, 240, 0.92);
+  --cv-input-bg: #ffffff;
+  --cv-input-font-size: 15px;
+
+  /* ── Page gradient (tabbar pages) ── */
+  --cv-page-gradient: radial-gradient(circle at 16% 0%, rgba(255, 218, 185, 0.54), transparent 32%),
+    linear-gradient(180deg, #fff8f3 0%, #f5f7fb 34%, #eef3f7 100%);
+
+  /* ── Title (inline, non-AppTopBar) ── */
+  --cv-title-size: 24px;
+  --cv-title-weight: 900;
+}
+
+body {
+  margin: 0;
+  font-family: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  background: var(--cv-page);
+  color: var(--cv-ink);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── Global utility classes ── */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* ── Page gradient ── */
+.page-gradient {
+  background: var(--cv-page-gradient);
+}
+
+/* ── Glass card ── */
+.card-glass {
+  border-radius: var(--cv-card-radius);
+  background: var(--cv-card-bg);
+  border: 1px solid var(--cv-card-border);
+  box-shadow: var(--cv-card-shadow);
+}
+
+/* ── Primary button ── */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--cv-btn-height);
+  border-radius: var(--cv-btn-radius);
+  background: var(--cv-btn-gradient);
+  color: #ffffff;
+  font-size: var(--cv-btn-font-size);
+  font-weight: var(--cv-btn-font-weight);
+  box-shadow: var(--cv-btn-shadow);
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-primary:active {
+  opacity: 0.88;
+  transform: scale(0.98);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+/* ── Secondary / outline button ── */
+.btn-outline {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--cv-btn-height);
+  border-radius: var(--cv-btn-radius);
+  background: transparent;
+  color: var(--cv-accent);
+  font-size: var(--cv-btn-font-size);
+  font-weight: 700;
+  border: 1.5px solid var(--cv-accent);
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.btn-outline:active {
+  opacity: 0.8;
+  transform: scale(0.98);
+}
+
+/* ── Input field ── */
+.input-field {
+  height: var(--cv-input-height);
+  border-radius: var(--cv-input-radius);
+  border: 1px solid var(--cv-input-border);
+  background: var(--cv-input-bg);
+  font-size: var(--cv-input-font-size);
+  padding: 0 16px;
+  color: var(--cv-text-primary);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-field::placeholder {
+  color: var(--cv-text-placeholder);
+}
+
+.input-field:focus {
+  border-color: var(--cv-accent);
+}
+
+/* ── Tag / chip ── */
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(249, 115, 22, 0.08);
+  color: var(--cv-accent);
+  border: 1px solid rgba(249, 115, 22, 0.18);
+}
+
+.tag-chip--active {
+  background: var(--cv-accent);
+  color: #ffffff;
+  border-color: var(--cv-accent);
+}
+
+.tag-chip--muted {
+  background: rgba(116, 128, 148, 0.08);
+  color: var(--cv-muted);
+  border: 1px solid rgba(116, 128, 148, 0.15);
+}

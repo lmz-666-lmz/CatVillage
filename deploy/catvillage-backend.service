@@ -1,0 +1,16 @@
+[Unit]
+Description=CatVillage FastAPI backend
+After=network.target mysql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/catvillage/backend
+EnvironmentFile=/opt/catvillage/backend/.env
+ExecStart=/opt/catvillage/backend/.venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000 --workers 1
+Restart=always
+RestartSec=3
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target

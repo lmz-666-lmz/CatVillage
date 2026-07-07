@@ -1,0 +1,38 @@
+# env
+.env
+*.env
+backend/.env
+frontpoint/.env
+.env.*
+!.env.example
+
+# python
+backend/.venv/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# node
+node_modules/
+frontpoint/node_modules/
+frontpoint/.vite/
+
+# build
+dist/
+frontpoint/dist/
+build/
+
+# runtime data
+backend/uploads/
+backend/storage/
+uploads/
+storage/
+*.log
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
