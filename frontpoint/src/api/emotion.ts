@@ -107,7 +107,7 @@ export function recognizeEmotion(data: FormData): Promise<ApiResponse<RecognizeE
     method: 'post',
     headers: { 'Content-Type': 'multipart/form-data' },
     data: normalized,
-    timeout: 60000 // Increase timeout for audio analysis model loading
+    timeout: 90000 // Audio analysis can include model warm-up and file processing.
   }).then((response) => ({
     ...response,
     data: {

@@ -243,24 +243,32 @@
         <section v-if="activeTab === 'topics'" class="admin-list topic-admin">
           <div class="section-title">
             <h2>热门话题</h2>
-            <span>真实聚合 + 默认引导</span>
+            <span>管理展示、推荐与排序</span>
           </div>
-          <article v-for="topic in hotTopics" :key="topic.topic" class="data-card topic-card">
+          <div class="topic-create-row">
+            <input v-model="topicDraft" type="text" placeholder="新增话题，如 猫咪护理" @keyup.enter="createTopic" />
+            <button type="button" class="primary-btn compact" @click="createTopic">新增</button>
+          </div>
+          <article v-for="topic in hotTopics" :key="topic.id || topic.topic" class="data-card topic-card">
             <div class="card-main">
               <div class="avatar topic">#</div>
               <div class="card-text">
-                <strong>#{{ topic.topic }}</strong>
-                <span>{{ topic.isDefault ? '默认引导话题' : `${topic.count} 次出现` }}</span>
+                <input v-model="topic.topic" class="topic-name-input" @change="saveTopic(topic)" />
+                <span>{{ topic.count || 0 }} 次出现 · 排序 {{ topic.sortOrder || 0 }}</span>
               </div>
             </div>
+            <div class="topic-controls">
+              <label><input v-model="topic.isVisible" type="checkbox" @change="saveTopic(topic)" /> 展示</label>
+              <label><input v-model="topic.isRecommended" type="checkbox" @change="saveTopic(topic)" /> 推荐</label>
+              <input v-model.number="topic.sortOrder" type="number" min="1" @change="saveTopic(topic)" />
+              <button type="button" class="round-danger" @click="removeTopic(topic)">
+                <van-icon name="delete-o" size="15" />
+              </button>
+            </div>
           </article>
-          <label class="form-field">
-            <span>默认引导话题（逗号分隔）</span>
-            <input v-model="defaultTopicText" type="text" placeholder="猫咪,新手养猫,喵喵台" />
-          </label>
-          <button type="button" class="primary-btn" @click="saveDefaultTopics">
+          <button type="button" class="primary-btn" @click="saveTopicSort">
             <van-icon name="passed" size="17" />
-            保存默认话题
+            保存排序
           </button>
         </section>
 
@@ -321,6 +329,7 @@ import { useRouter } from 'vue-router';
 import { showConfirmDialog, showToast } from 'vant';
 import {
   deleteAdminDynamic,
+  deleteAdminTopic,
   deleteAdminEmotionRecord,
   deleteAdminHealthRecord,
   deleteAdminMessage,
@@ -331,6 +340,9 @@ import {
   getAdminEmotionRecords,
   getAdminHealthRecords,
   getAdminHotTopics,
+  createAdminTopic,
+  updateAdminTopic,
+  sortAdminTopics,
   getAdminMessages,
   getAdminOverview,
   getAdminPets,
@@ -340,7 +352,6 @@ import {
   setAdminUserRole,
   setAdminDynamicRecommended,
   updateAdminConfig,
-  updateAdminDefaultTopics,
   resetAdminUserPassword,
   type AdminHotTopic,
   type AdminConfig,
@@ -399,7 +410,7 @@ const emotionRecords = ref<AdminEmotionRecord[]>([]);
 const messages = ref<AdminMessage[]>([]);
 const healthRecords = ref<AdminHealthRecord[]>([]);
 const hotTopics = ref<AdminHotTopic[]>([]);
-const defaultTopicText = ref('猫咪,新手养猫,喵喵台');
+const topicDraft = ref('');
 const config = ref<AdminConfig>({ aiApiKey: '', aiBaseUrl: '', aiModel: 'deepseek-chat', adminUsername: '', runtimeOnly: true });
 const showPasswordDialog = ref(false);
 const passwordTarget = ref<AdminUser | null>(null);
@@ -493,7 +504,6 @@ const loadMessages = async () => {
 const loadTopics = async () => {
   const response = await getAdminHotTopics();
   hotTopics.value = response.data.list;
-  defaultTopicText.value = (response.data.defaultTopics || []).join(',');
 };
 const loadHealth = async () => {
   const response = await getAdminHealthRecords({
@@ -657,19 +667,61 @@ const saveConfig = async () => {
   }
 };
 
-const saveDefaultTopics = async () => {
-  const topics = defaultTopicText.value
-    .split(/[,，\s]+/)
-    .map((item) => item.replace(/^#/, '').trim())
-    .filter(Boolean);
-  if (topics.length === 0) {
-    showToast({ type: 'fail', message: '请至少填写一个默认话题' });
+const createTopic = async () => {
+  const topic = topicDraft.value.trim().replace(/^#/, '');
+  if (!topic) {
+    showToast({ type: 'fail', message: '请输入话题名' });
     return;
   }
   await withLoading(async () => {
-    await updateAdminDefaultTopics(topics);
+    await createAdminTopic({ topic, sortOrder: hotTopics.value.length + 1, isRecommended: true, isVisible: true });
+    topicDraft.value = '';
     await loadTopics();
-    showToast({ type: 'success', message: '默认话题已更新' });
+    showToast({ type: 'success', message: '话题已新增' });
+  });
+};
+
+const saveTopic = async (topic: AdminHotTopic) => {
+  if (!topic.id) return;
+  const name = topic.topic.trim().replace(/^#/, '');
+  if (!name) {
+    showToast({ type: 'fail', message: '话题名不能为空' });
+    await loadTopics();
+    return;
+  }
+  await withLoading(async () => {
+    await updateAdminTopic(topic.id as string, {
+      topic: name,
+      sortOrder: Number(topic.sortOrder || 0),
+      isRecommended: !!topic.isRecommended,
+      isVisible: !!topic.isVisible
+    });
+    await loadTopics();
+  });
+};
+
+const removeTopic = async (topic: AdminHotTopic) => {
+  if (!topic.id) return;
+  try {
+    await showConfirmDialog({ title: '删除话题', message: `确认删除 #${topic.topic}？` });
+  } catch {
+    return;
+  }
+  await withLoading(async () => {
+    await deleteAdminTopic(topic.id as string);
+    await loadTopics();
+    showToast({ type: 'success', message: '话题已删除' });
+  });
+};
+
+const saveTopicSort = async () => {
+  const items = hotTopics.value
+    .filter((item) => item.id)
+    .map((item, index) => ({ id: item.id as string, sortOrder: Number(item.sortOrder || index + 1) }));
+  await withLoading(async () => {
+    await sortAdminTopics(items);
+    await loadTopics();
+    showToast({ type: 'success', message: '排序已保存' });
   });
 };
 
@@ -1380,7 +1432,67 @@ onMounted(() => {
 }
 
 .topic-admin .topic-card {
+  display: grid;
+  gap: 12px;
   background: linear-gradient(135deg, #fff 0%, #fff8f2 100%);
+}
+
+.topic-create-row {
+  display: flex;
+  gap: 8px;
+}
+
+.topic-create-row input,
+.topic-name-input,
+.topic-controls input[type="number"] {
+  min-width: 0;
+  border: 1px solid #dbe4ee;
+  border-radius: 12px;
+  background: #fff;
+  color: #172033;
+  outline: none;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.topic-create-row input {
+  flex: 1;
+}
+
+.primary-btn.compact {
+  flex-shrink: 0;
+  padding: 10px 14px;
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.2);
+}
+
+.topic-name-input {
+  width: 100%;
+  padding: 8px 10px;
+}
+
+.topic-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.topic-controls label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #748094;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.topic-controls input[type="number"] {
+  width: 76px;
+  padding: 7px 9px;
 }
 
 .avatar.topic {

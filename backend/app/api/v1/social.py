@@ -41,6 +41,21 @@ from collections import defaultdict
 router = APIRouter(prefix="/social", tags=["social"])
 
 DEFAULT_HOT_TOPICS = ["猫咪", "新手养猫", "喵喵台"]
+MANAGED_HOT_TOPICS: list[dict[str, object]] = [
+    {"id": f"default-{index + 1}", "topic": topic, "sortOrder": index + 1, "isRecommended": True, "isVisible": True}
+    for index, topic in enumerate(DEFAULT_HOT_TOPICS)
+]
+
+
+def _normalize_topic_name(value: str | None) -> str:
+    return str(value or "").strip().lstrip("#")
+
+
+def get_managed_hot_topics() -> list[dict[str, object]]:
+    return sorted(
+        [topic for topic in MANAGED_HOT_TOPICS if bool(topic.get("isVisible", True))],
+        key=lambda item: (int(item.get("sortOrder") or 0), str(item.get("topic") or "")),
+    )
 
 def _save_social_image(file: UploadFile) -> str:
     return storage_service.upload(file, sub_dir="social")
@@ -609,10 +624,27 @@ def list_hot_topics(
     for (content,) in rows:
         counter.update(_extract_topics(content or ""))
 
-    hot_list = [
-        HotTopic(topic=topic, count=count, is_default=False)
-        for topic, count in counter.most_common(limit)
-    ]
+    configured = get_managed_hot_topics()
+    used: set[str] = set()
+    hot_list: list[HotTopic] = []
+    for item in configured:
+        topic = _normalize_topic_name(str(item.get("topic") or ""))
+        if not topic or topic in used:
+            continue
+        used.add(topic)
+        hot_list.append(HotTopic(topic=topic, count=counter.get(topic, 0), is_default=counter.get(topic, 0) == 0))
+        if len(hot_list) >= limit:
+            break
+
+    if len(hot_list) < limit:
+        for topic, count in counter.most_common(limit):
+            if topic in used:
+                continue
+            hot_list.append(HotTopic(topic=topic, count=count, is_default=False))
+            used.add(topic)
+            if len(hot_list) >= limit:
+                break
+
     if not hot_list:
         hot_list = [HotTopic(topic=topic, count=0, is_default=True) for topic in DEFAULT_HOT_TOPICS[:limit]]
 

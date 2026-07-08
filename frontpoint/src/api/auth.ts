@@ -76,3 +76,11 @@ export function updateUserProfile(data: { nickname?: string; avatarUrl?: string 
     }
   });
 }
+
+export function changePassword(data: { oldPassword: string; newPassword: string }) {
+  return request<{ success: boolean }>({
+    url: '/auth/password',
+    method: 'put',
+    data
+  });
+}

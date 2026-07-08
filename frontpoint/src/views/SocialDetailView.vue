@@ -66,7 +66,15 @@
           </button>
         </div>
 
-        <p class="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-[#172033]">{{ detail.content }}</p>
+        <p class="mt-4 whitespace-pre-wrap text-[15px] leading-relaxed text-[#172033]">{{ cleanDynamicContent(detail.content) }}</p>
+
+        <div v-if="parseEmotionSnapshot(detail.content)" class="emotion-snapshot-card">
+          <div>
+            <strong>{{ detail.catName || '猫咪' }} · {{ parseEmotionSnapshot(detail.content)?.tag }}中</strong>
+            <span>本喵{{ parseEmotionSnapshot(detail.content)?.tag }}中，来自历史喵喵台记录</span>
+          </div>
+          <audio v-if="emotionAudioUrl" :src="emotionAudioUrl" controls preload="none"></audio>
+        </div>
 
         <div class="mt-4 flex items-center justify-around rounded-[14px] bg-[#f5f7fb] py-3">
           <div class="text-center">
@@ -160,7 +168,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { closeToast, showConfirmDialog, showToast } from 'vant';
 import { likeDynamic, unlikeDynamic } from '@/api/social';
@@ -170,6 +178,7 @@ import { applyDisplayProfileToDynamic } from '@/utils/userProfile';
 import { getDefaultUserAvatar, getSafeAvatarUrl } from '@/utils/image';
 import { getPrivacySettings, type PrivacySettings } from '@/utils/userSettings';
 import type { CommentResponse, SocialDynamic } from '@/types/social';
+import { createAuthorizedAudioObjectUrl } from '@/api/emotion';
 
 const props = defineProps<{ id: string }>();
 const router = useRouter();
@@ -201,6 +210,7 @@ const detail = ref<SocialDynamic | null>(null);
 const draft = ref('');
 const comments = ref<CommentResponse[]>([]);
 const privacy = ref<PrivacySettings>(getPrivacySettings());
+const emotionAudioUrl = ref('');
 const fallbackImage = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=1200&q=80';
 
 const normalizeComments = (input: unknown) => {
@@ -236,18 +246,39 @@ const formatCount = (value?: number) => {
   return String(num);
 };
 
+const parseEmotionSnapshot = (content?: string) => {
+  const match = String(content || '').match(/\[CV_EMOTION\s+id="([^"]*)"\s+tag="([^"]*)"\s+audio="([^"]*)"\]/);
+  return match ? { id: match[1], tag: match[2], audio: match[3] } : null;
+};
+
+const cleanDynamicContent = (content?: string) => String(content || '').replace(/\n?\[CV_EMOTION[^\]]+\]/g, '').trim();
+
 const loadDetail = async () => {
   loading.value = true;
   error.value = null;
   try {
     const data = await fetchDynamicDetail(props.id);
-    detail.value = applyDisplayProfileToDynamic(data);
+    const nextDetail = applyDisplayProfileToDynamic(data);
+    detail.value = nextDetail;
+    await loadEmotionAudio(nextDetail.content);
     const raw = data as unknown as Record<string, unknown>;
     comments.value = normalizeComments(raw.comments);
   } catch {
     error.value = '动态详情获取失败，请稍后重试';
   } finally {
     loading.value = false;
+  }
+};
+
+const loadEmotionAudio = async (content?: string) => {
+  if (emotionAudioUrl.value?.startsWith('blob:')) URL.revokeObjectURL(emotionAudioUrl.value);
+  emotionAudioUrl.value = '';
+  const audio = parseEmotionSnapshot(content)?.audio;
+  if (!audio) return;
+  try {
+    emotionAudioUrl.value = await createAuthorizedAudioObjectUrl(audio);
+  } catch {
+    emotionAudioUrl.value = '';
   }
 };
 
@@ -421,6 +452,9 @@ const saveEdit = async () => {
 };
 
 onMounted(loadDetail);
+onBeforeUnmount(() => {
+  if (emotionAudioUrl.value?.startsWith('blob:')) URL.revokeObjectURL(emotionAudioUrl.value);
+});
 </script>
 
 <style scoped>
@@ -474,5 +508,35 @@ onMounted(loadDetail);
 .edit-footer button:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+.emotion-snapshot-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  border: 1px solid #dcfce7;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f0fdf4, #fff7ed);
+  padding: 12px;
+}
+
+.emotion-snapshot-card strong {
+  display: block;
+  color: #172033;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.emotion-snapshot-card span {
+  display: block;
+  margin-top: 3px;
+  color: #0f766e;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.emotion-snapshot-card audio {
+  width: 100%;
+  max-width: 100%;
 }
 </style>

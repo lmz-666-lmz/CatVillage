@@ -265,9 +265,13 @@ export interface AdminConfig {
 }
 
 export interface AdminHotTopic {
+  id?: string;
   topic: string;
   count: number;
   isDefault: boolean;
+  sortOrder?: number;
+  isRecommended?: boolean;
+  isVisible?: boolean;
 }
 
 export interface AdminHotTopicsResponse {
@@ -284,6 +288,30 @@ export function updateAdminDefaultTopics(topics: string[]) {
     url: '/admin/topics/default',
     method: 'put',
     data: { topics }
+  });
+}
+
+export function getAdminTopics() {
+  return request<{ list: AdminHotTopic[]; total: number }>({ url: '/admin/topics', method: 'get' });
+}
+
+export function createAdminTopic(data: Partial<AdminHotTopic>) {
+  return request<AdminHotTopic>({ url: '/admin/topics', method: 'post', data });
+}
+
+export function updateAdminTopic(topicId: string, data: Partial<AdminHotTopic>) {
+  return request<AdminHotTopic>({ url: `/admin/topics/${topicId}`, method: 'put', data });
+}
+
+export function deleteAdminTopic(topicId: string) {
+  return request<{ success: boolean }>({ url: `/admin/topics/${topicId}`, method: 'delete' });
+}
+
+export function sortAdminTopics(items: Array<{ id: string; sortOrder: number }>) {
+  return request<{ success: boolean; list: AdminHotTopic[] }>({
+    url: '/admin/topics/sort',
+    method: 'put',
+    data: { items }
   });
 }
 

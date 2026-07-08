@@ -30,6 +30,9 @@ export interface DynamicResponse {
   catName?: string;
   avatar: string;
   content: string;
+  location?: string;
+  address?: string;
+  locationName?: string;
   images?: string[];
   likeCount: number;
   commentCount: number;

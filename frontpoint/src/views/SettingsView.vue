@@ -41,7 +41,7 @@
         :key="item.title"
         type="button"
         class="flex w-full items-center justify-between rounded-[12px] px-3 py-3 text-left"
-        @click="router.push({ name: item.routeName })"
+        @click="handleSettingItem(item)"
       >
         <div class="flex items-center gap-3">
           <div class="grid h-9 w-9 place-items-center rounded-xl bg-[#f2f5ff] text-[#748094]">
@@ -80,7 +80,7 @@
       class="mt-3 mb-8 w-full text-center text-[13px] font-bold text-[#748094]"
       @click="showVersionDialog = true"
     >
-      当前版本 V2.4
+      当前版本 V2.5
     </button>
 
     <!-- 修改用户名弹窗 -->
@@ -105,18 +105,40 @@
       </div>
     </van-overlay>
 
+    <!-- 修改密码弹窗 -->
+    <van-overlay :show="showPasswordSheet" @click="showPasswordSheet = false">
+      <div class="nickname-dialog-wrapper" @click.stop>
+        <div class="nickname-dialog password-dialog">
+          <h3 class="nickname-dialog-title">修改密码</h3>
+          <p class="nickname-dialog-desc">修改成功后需要重新登录，保障账号安全</p>
+          <input v-model="oldPassword" type="password" autocomplete="current-password" placeholder="原密码" class="nickname-dialog-input" />
+          <input v-model="newPassword" type="password" autocomplete="new-password" placeholder="新密码，至少 6 位" class="nickname-dialog-input" />
+          <input v-model="confirmPassword" type="password" autocomplete="new-password" placeholder="再次输入新密码" class="nickname-dialog-input" @keyup.enter="submitPasswordChange" />
+          <div v-if="passwordError" class="password-error">{{ passwordError }}</div>
+          <div class="nickname-dialog-actions">
+            <button type="button" class="nickname-dialog-btn cancel" @click="showPasswordSheet = false">取消</button>
+            <button type="button" class="nickname-dialog-btn confirm" :disabled="changingPassword" @click="submitPasswordChange">
+              {{ changingPassword ? '修改中...' : '确认修改' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </van-overlay>
+
     <!-- 版本介绍弹窗 -->
     <van-overlay :show="showVersionDialog" @click="showVersionDialog = false">
       <div class="nickname-dialog-wrapper" @click.stop>
         <div class="nickname-dialog version-dialog">
-          <h3 class="nickname-dialog-title">CatVillage V2.4</h3>
+          <h3 class="nickname-dialog-title">CatVillage V2.5</h3>
           <div class="version-list">
-            <div class="version-item">疫苗登记增强</div>
-            <div class="version-item">消息红点与搜索增强</div>
-            <div class="version-item">搜索页视觉升级</div>
-            <div class="version-item">设置项有效性增强</div>
-            <div class="version-item">欢迎页与主导航体验优化</div>
-            <div class="version-item">后台管理体验优化</div>
+            <div class="version-item">喵喵台圆盘上传回归</div>
+            <div class="version-item">登录注册错误提示优化</div>
+            <div class="version-item">AI 养育异常预警增强</div>
+            <div class="version-item">广场动态与村长推荐优化</div>
+            <div class="version-item">热门话题管理与排序</div>
+            <div class="version-item">V2.5.1：喵喵台音频分析体验修复</div>
+            <div class="version-item">V2.5.1：广场动态情绪展示与历史导入</div>
+            <div class="version-item">V2.5.1：登录注册与 Settings 页面优化</div>
           </div>
           <div class="nickname-dialog-actions">
             <button type="button" class="nickname-dialog-btn confirm" @click="showVersionDialog = false">知道了</button>
@@ -132,7 +154,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { showConfirmDialog, showToast } from 'vant';
 import type { UploaderFileListItem } from 'vant';
-import { getMe, updateUserProfile } from '@/api/auth';
+import { changePassword, getMe, updateUserProfile } from '@/api/auth';
 import { clearAccountRuntimeState, getUserDisplayProfile, patchUserDisplayProfile, setCurrentUserIdentity } from '@/utils/userProfile';
 import { useCatsStore, useCurrentCatStore } from '@/stores';
 
@@ -146,17 +168,25 @@ const miaoId = ref('');
 const nicknameDraft = ref('');
 const showNicknameSheet = ref(false);
 const showVersionDialog = ref(false);
+const showPasswordSheet = ref(false);
+const oldPassword = ref('');
+const newPassword = ref('');
+const confirmPassword = ref('');
+const passwordError = ref('');
+const changingPassword = ref(false);
 const isAdmin = ref(false);
 
 interface SettingItem {
   icon: string;
   title: string;
   desc: string;
-  routeName: string;
+  routeName?: string;
+  action?: 'changePassword';
   adminOnly?: boolean;
 }
 
 const allSettingItems: SettingItem[] = [
+  { icon: 'shield-o', title: '账户安全', desc: '修改登录密码', action: 'changePassword' },
   { icon: 'bell', title: '通知设置', desc: '管理提醒与消息推送', routeName: 'SettingsNotification' },
   { icon: 'lock', title: '隐私设置', desc: '控制资料可见性与互动权限', routeName: 'SettingsPrivacy' },
   { icon: 'manager-o', title: '后台管理', desc: '管理员查看用户、内容与数据', routeName: 'AdminDashboard', adminOnly: true }
@@ -165,6 +195,49 @@ const allSettingItems: SettingItem[] = [
 const visibleSettingItems = computed(() =>
   allSettingItems.filter(item => !item.adminOnly || isAdmin.value)
 );
+
+const handleSettingItem = (item: SettingItem) => {
+  if (item.action === 'changePassword') {
+    passwordError.value = '';
+    oldPassword.value = '';
+    newPassword.value = '';
+    confirmPassword.value = '';
+    showPasswordSheet.value = true;
+    return;
+  }
+  if (item.routeName) router.push({ name: item.routeName });
+};
+
+const submitPasswordChange = async () => {
+  passwordError.value = '';
+  const oldValue = oldPassword.value.trim();
+  const newValue = newPassword.value.trim();
+  const confirmValue = confirmPassword.value.trim();
+  if (!oldValue) passwordError.value = '请输入原密码';
+  else if (newValue.length < 6) passwordError.value = '新密码至少 6 位';
+  else if (newValue !== confirmValue) passwordError.value = '两次输入的新密码不一致';
+  else if (oldValue === newValue) passwordError.value = '新密码不能和原密码相同';
+  if (passwordError.value) {
+    showToast({ type: 'fail', message: passwordError.value });
+    return;
+  }
+
+  changingPassword.value = true;
+  try {
+    await changePassword({ oldPassword: oldValue, newPassword: newValue });
+    showToast({ type: 'success', message: '密码修改成功，请重新登录' });
+    clearAccountRuntimeState({ includeToken: true });
+    catsStore.clearCats();
+    currentCatStore.clearCurrentCat();
+    router.replace({ name: 'Login' });
+  } catch (error: any) {
+    const msg = String(error?.message || '').trim() || '修改失败，请稍后重试';
+    passwordError.value = msg;
+    showToast({ type: 'fail', message: msg });
+  } finally {
+    changingPassword.value = false;
+  }
+};
 
 const syncProfileToServer = async (profile: { nickname?: string; avatarUrl?: string }) => {
   const token = localStorage.getItem('token');
@@ -374,6 +447,24 @@ onMounted(() => {
 /* ========== VERSION DIALOG ========== */
 .version-dialog .nickname-dialog-actions {
   grid-template-columns: 1fr;
+}
+
+.password-dialog {
+  display: grid;
+  gap: 10px;
+}
+
+.password-dialog .nickname-dialog-desc {
+  margin-bottom: 4px;
+}
+
+.password-error {
+  border-radius: 14px;
+  background: #fff7ed;
+  color: #ea580c;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-weight: 800;
 }
 
 .version-list {

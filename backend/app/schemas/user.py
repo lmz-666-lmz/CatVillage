@@ -23,3 +23,10 @@ class UserProfileUpdate(BaseModel):
     avatar_url: str | None = Field(None, alias="avatarUrl")
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class PasswordChangeRequest(BaseModel):
+    old_password: str = Field(..., alias="oldPassword", min_length=1, max_length=128)
+    new_password: str = Field(..., alias="newPassword", min_length=6, max_length=128)
+
+    model_config = ConfigDict(populate_by_name=True)

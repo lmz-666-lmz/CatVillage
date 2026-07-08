@@ -5,7 +5,6 @@ import axios, {
   type InternalAxiosRequestConfig,
   AxiosHeaders
 } from 'axios';
-import { showToast } from 'vant';
 import type { ApiResponse } from '@/types/common';
 import { clearAccountRuntimeState } from '@/utils/userProfile';
 
@@ -49,6 +48,32 @@ const createRequestError = (message: string, status?: number, code?: number) => 
   requestError.status = status;
   requestError.code = code;
   return requestError;
+};
+
+const extractBackendMessage = (data: unknown): string | undefined => {
+  if (!isRecord(data)) return undefined;
+  const detail = data.detail;
+  if (typeof detail === 'string') return detail;
+  if (Array.isArray(detail)) {
+    const first = detail.find((item) => isRecord(item) && typeof item.msg === 'string') as Record<string, unknown> | undefined;
+    if (typeof first?.msg === 'string') return first.msg;
+  }
+  return typeof data.msg === 'string' ? data.msg : undefined;
+};
+
+const toFriendlyRequestMessage = (error: AxiosError<unknown>) => {
+  const status = error.response?.status;
+  const backendMessage = extractBackendMessage(error.response?.data);
+  if (backendMessage) return backendMessage;
+  if (error.code === 'ECONNABORTED') return '请求处理时间较长，请稍后查看结果';
+  if (error.code === 'ERR_NETWORK') return '网络异常，请检查网络后重试';
+  if (status === 401) return '登录已过期，请重新登录';
+  if (status === 403) return '没有权限执行该操作';
+  if (status === 404) return '请求的内容不存在';
+  if (status === 413) return '文件过大，请压缩后再上传';
+  if (status === 422) return '提交内容格式不正确，请检查后再试';
+  if (status && status >= 500) return '服务器暂时开小差，请稍后重试';
+  return '请求失败，请稍后重试';
 };
 
 const cleanParams = (params: unknown) => {
@@ -99,16 +124,6 @@ client.interceptors.response.use(
       }
     }
 
-    if (error.code === 'ERR_NETWORK') {
-      showToast({ type: 'fail', message: '网络异常：后端服务未启动或跨域未配置' });
-    } else if (error.response?.status === 500) {
-      showToast({ type: 'fail', message: '服务器内部错误，请检查后端日志' });
-    } else if (error.response?.status === 404) {
-      showToast({ type: 'fail', message: '接口地址不存在，请核对路由' });
-    } else {
-      showToast({ type: 'fail', message: `请求失败：${error.message || '未知错误'}` });
-    }
-
     return Promise.reject(error);
   }
 );
@@ -144,19 +159,12 @@ const request = async <T>(config: AxiosRequestConfig): Promise<RequestResult<T>>
   } catch (error) {
     const axiosError = error as AxiosError<unknown>;
     const status = axiosError.response?.status;
-    const backendData = axiosError.response?.data;
-    const backendMessage =
-      isRecord(backendData) && typeof backendData.detail === 'string'
-        ? backendData.detail
-        : isRecord(backendData) && typeof backendData.msg === 'string'
-          ? backendData.msg
-          : undefined;
 
     if (status === 401) {
       clearAccountRuntimeState({ includeToken: true });
     }
 
-    return Promise.reject(createRequestError(backendMessage || axiosError.message || 'Network Error', status));
+    return Promise.reject(createRequestError(toFriendlyRequestMessage(axiosError), status));
   }
 };
 

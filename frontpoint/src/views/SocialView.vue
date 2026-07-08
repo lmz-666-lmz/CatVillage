@@ -45,7 +45,7 @@
       </section>
 
       <section v-else class="feed-list">
-        <article v-for="item in dynamics" :key="item.id" class="feed-card" @click="openDetail(item.id)">
+        <article v-for="item in dynamics" :key="item.id" class="feed-card" :class="{ recommended: item.isRecommended }" @click="openDetail(item.id)">
           <div class="feed-author">
             <van-image :src="getSafeAvatarUrl(item.avatar, item.userId)" fit="cover" width="44" height="44" round>
               <template #error>
@@ -57,14 +57,17 @@
                 {{ item.username || '猫村村民' }}
                 <span v-if="item.isRecommended" class="chief-badge">村长推荐</span>
               </strong>
-              <span>{{ formatRelativeTime(item.createdAt) }} · {{ randomLocation(item.id) }}</span>
+              <span>{{ formatRelativeTime(item.createdAt) }} · {{ resolveLocation(item) }}</span>
             </div>
             <button class="more-btn" type="button" aria-label="更多" @click.stop="openCardMenu(item)">
               <van-icon name="ellipsis" size="18" />
             </button>
           </div>
 
-          <p class="feed-content">{{ item.content }}</p>
+          <p class="feed-content" @click.stop="openDetail(item.id)">{{ cleanDynamicContent(item.content) }}</p>
+          <button v-if="isLongContent(cleanDynamicContent(item.content))" type="button" class="expand-content-btn" @click.stop="openDetail(item.id)">
+            展开全文
+          </button>
 
           <div v-if="item.images?.length" class="image-grid" :class="`count-${Math.min(item.images.length, 4)}`">
             <van-image
@@ -82,7 +85,8 @@
 
           <div class="feed-meta">
             <span v-if="item.catName" class="cat-chip"><van-icon name="smile-o" size="13" />{{ item.catName }}</span>
-            <span v-else class="cat-chip muted">猫村日常</span>
+            <span v-if="parseEmotionSnapshot(item.content)" class="cat-chip emotion-chip">本喵{{ parseEmotionSnapshot(item.content)?.tag }}中</span>
+            <span v-if="!item.catName && !parseEmotionSnapshot(item.content)" class="cat-chip muted">猫村日常</span>
             <span>{{ item.commentCount || 0 }} 条评论</span>
           </div>
 
@@ -175,11 +179,25 @@ const menuItem = ref<SocialDynamic | null>(null);
 const editDraft = ref('');
 const menuActions = ref<Array<{ name: string; color?: string }>>([]);
 
-const randomLocation = (seed: string) => {
-  const locations = ['上海', '杭州', '成都', '北京', '深圳', '重庆'];
-  const idx = seed.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % locations.length;
+const resolveLocation = (item: SocialDynamic) => {
+  const source = item as SocialDynamic & { location?: string; address?: string; locationName?: string };
+  if (source.location || source.address || source.locationName) return source.location || source.address || source.locationName;
+  const locations = ['上海', '杭州', '成都', '北京', '深圳', '重庆', '广州', '苏州'];
+  const idx = item.id.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % locations.length;
   return locations[idx] || '猫村';
 };
+
+const isLongContent = (content?: string) => {
+  const text = content || '';
+  return text.length > 92 || text.split(/\r?\n/).length > 4;
+};
+
+const parseEmotionSnapshot = (content?: string) => {
+  const match = String(content || '').match(/\[CV_EMOTION\s+id="([^"]*)"\s+tag="([^"]*)"\s+audio="([^"]*)"\]/);
+  return match ? { id: match[1], tag: match[2], audio: match[3] } : null;
+};
+
+const cleanDynamicContent = (content?: string) => String(content || '').replace(/\n?\[CV_EMOTION[^\]]+\]/g, '').trim();
 
 const formatSocialCount = (value?: number) => {
   const num = value || 0;
@@ -434,6 +452,11 @@ watch(activeTab, () => { void refresh(); });
   box-shadow: var(--cv-card-shadow);
 }
 
+.feed-card.recommended {
+  border-color: rgba(249, 115, 22, 0.34);
+  box-shadow: 0 18px 38px rgba(249, 115, 22, 0.13);
+}
+
 .feed-author {
   display: flex;
   align-items: center;
@@ -472,14 +495,27 @@ watch(activeTab, () => { void refresh(); });
 
 .author-text .chief-badge {
   display: inline-flex;
+  align-items: center;
+  gap: 3px;
   margin-left: 6px;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 999px;
-  background: #fff7ed;
+  background: linear-gradient(135deg, #fff7ed, #ffedd5);
   color: #ea580c;
   font-size: 11px;
   font-weight: 900;
   vertical-align: middle;
+  box-shadow: inset 0 0 0 1px rgba(249, 115, 22, 0.14);
+}
+
+.author-text .chief-badge::before {
+  content: '♛';
+  font-size: 11px;
+}
+
+.emotion-chip {
+  background: #ecfdf5;
+  color: #0f766e;
 }
 
 .more-btn {
@@ -495,11 +531,25 @@ watch(activeTab, () => { void refresh(); });
 
 .feed-content {
   margin: 12px 0;
+  display: -webkit-box;
+  overflow: hidden;
   color: var(--cv-ink);
   font-size: 15px;
   line-height: 1.68;
-  white-space: pre-wrap;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  white-space: pre-line;
   word-break: break-word;
+}
+
+.expand-content-btn {
+  margin: -4px 0 10px;
+  border: 0;
+  background: transparent;
+  color: var(--cv-accent);
+  padding: 0;
+  font-size: 13px;
+  font-weight: 900;
 }
 
 .image-grid {

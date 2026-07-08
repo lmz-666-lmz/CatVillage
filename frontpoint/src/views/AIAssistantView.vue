@@ -40,6 +40,11 @@
             </div>
           </div>
 
+          <div v-if="vaccineItems.length" class="ai-vaccine-list">
+            <span v-for="item in visibleVaccineItems" :key="item">{{ item }}</span>
+            <span v-if="hiddenVaccineCount > 0">+{{ hiddenVaccineCount }}</span>
+          </div>
+
           <div class="ai-reference-card">
             <div class="ai-reference-title">
               <span>🎧</span>
@@ -203,13 +208,22 @@ const petInfo = computed(() => ({
 const cats = computed(() => catsStore.getAllCats);
 const hasChatHistory = computed(() => selectedCat.value && messages.value.some((item) => item.id !== 'welcome-1'));
 const vaccineBrief = computed(() => {
+  return vaccineItems.value.length ? '已登记疫苗' : '暂无疫苗';
+});
+const vaccineItems = computed(() => {
   const raw = String(selectedCat.value?.vaccineStatus || '').trim();
-  return raw ? '已登记疫苗' : '暂无疫苗';
+  if (!raw) return [];
+  const items = raw
+    .split(/[、,，;；\n\r]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return Array.from(new Set(items));
 });
 const vaccineDetail = computed(() => {
-  const raw = String(selectedCat.value?.vaccineStatus || '').trim();
-  return raw || '暂无疫苗';
+  return vaccineItems.value.length ? `已登记 ${vaccineItems.value.length} 项` : '暂无疫苗';
 });
+const visibleVaccineItems = computed(() => vaccineItems.value.slice(0, 3));
+const hiddenVaccineCount = computed(() => Math.max(0, vaccineItems.value.length - visibleVaccineItems.value.length));
 const emotionReferenceText = computed(() =>
   lastEmotionRefCount.value > 0
     ? `已参考最近 ${lastEmotionRefCount.value} 条喵喵台记录`
@@ -223,10 +237,10 @@ const petDetailChips = computed(() => [
 ]);
 
 const actionCards = ref([
-  { name: '健康报告', icon: 'notes-o', iconClass: 'red' },
+  { name: '养猫问答', icon: 'shop-o', iconClass: 'orange' },
   { name: '异常预警', icon: 'warning', iconClass: 'rose' },
   { name: '专业医生', icon: 'plus', iconClass: 'blue' },
-  { name: '养猫问答', icon: 'shop-o', iconClass: 'orange' },
+  { name: '健康报告', icon: 'notes-o', iconClass: 'red' },
 ]);
 
 const scrollChatToBottom = async () => {
@@ -238,11 +252,89 @@ const scrollChatToBottom = async () => {
 };
 
 const handleActionClick = (item: any) => {
-  if (item.name === '异常预警') router.push({ name: 'Emotions' });
-  else if (item.name === '健康报告') openCatArchive();
+  if (item.name === '异常预警') void runWarningCheck();
+  else if (item.name === '健康报告') void runHealthReport();
   else if (item.name === '专业医生') router.push({ name: 'ProfessionalDoctors' });
   else if (item.name === '养猫问答') { pushConsultCard(); focusConsultInput(); }
   else showToast('该功能正在开发中');
+};
+
+const buildWarningPrompt = () => {
+  const cat = selectedCat.value;
+  const emotionHint = lastEmotionRefCount.value > 0
+    ? `最近喵喵台记录：已参考 ${lastEmotionRefCount.value} 条。`
+    : '最近喵喵台记录：目前缺少喵喵台记录，建议上传一次猫叫后再综合判断。';
+  return [
+    '请基于以下猫咪资料做一次异常预警，回答务必简短、说重点。',
+    '请按这四段输出：当前状态判断、需要注意的2-4个点、建议立即做什么、是否建议就医。',
+    `猫名：${cat?.name || '未填写'}`,
+    `品种：${cat?.breed || '未填写'}`,
+    `年龄：${formatCatAge(cat?.age) || '未知'}`,
+    `体重：${cat?.weight ? `${cat.weight}kg` : '未知'}`,
+    `性别：${(cat as any)?.gender || (cat as any)?.sex || '未知'}`,
+    `绝育：${cat?.isNeutered ? '已绝育' : '未绝育'}`,
+    `疫苗：${vaccineItems.value.length ? vaccineItems.value.join('、') : '暂无疫苗登记'}`,
+    `健康状态：${petInfo.value.status}，健康分：${petInfo.value.score}`,
+    emotionHint
+  ].join('\n');
+};
+
+const runWarningCheck = async () => {
+  const catId = selectedCat.value?.id;
+  if (!catId) { showToast('请先添加猫咪后再使用'); return; }
+  messages.value.push({ id: `u-warning-${Date.now()}`, role: 'user', content: '请帮我做一次异常预警' });
+  void scrollChatToBottom();
+  try {
+    const result = await sendMessageToAI({ catId, message: buildWarningPrompt() });
+    messages.value.push({ id: result.id || `a-warning-${Date.now()}`, role: 'assistant', content: result.message });
+    if (typeof result.emotionRecordsCount === 'number') lastEmotionRefCount.value = result.emotionRecordsCount;
+  } catch (err: any) {
+    const msg = String(err?.message || '');
+    const friendly = /key|configured|503|AI assistant/i.test(msg) ? '异常预警服务暂未配置，当前功能待完善。' : '异常预警生成失败，请稍后重试。';
+    messages.value.push({ id: `a-warning-fail-${Date.now()}`, role: 'assistant', content: friendly });
+    showToast(friendly);
+  } finally {
+    void scrollChatToBottom();
+  }
+};
+
+const buildHealthReportPrompt = () => {
+  const cat = selectedCat.value;
+  const emotionHint = lastEmotionRefCount.value > 0
+    ? `最近喵喵台记录：已参考 ${lastEmotionRefCount.value} 条。`
+    : '最近喵喵台记录：暂无可参考记录。';
+  return [
+    '请基于以下猫咪资料生成一份简洁健康报告，语气温和，重点清晰。',
+    '请按这四段输出：健康概览、档案重点、养护建议、下次关注。',
+    `猫名：${cat?.name || '未填写'}`,
+    `品种：${cat?.breed || '未填写'}`,
+    `年龄：${formatCatAge(cat?.age) || '未知'}`,
+    `体重：${cat?.weight ? `${cat.weight}kg` : '未知'}`,
+    `性别：${(cat as any)?.gender || (cat as any)?.sex || '未知'}`,
+    `绝育：${cat?.isNeutered ? '已绝育' : '未绝育'}`,
+    `疫苗：${vaccineItems.value.length ? vaccineItems.value.join('、') : '暂无疫苗登记'}`,
+    `健康状态：${petInfo.value.status}，健康分：${petInfo.value.score}`,
+    emotionHint
+  ].join('\n');
+};
+
+const runHealthReport = async () => {
+  const catId = selectedCat.value?.id;
+  if (!catId) { showToast('请先添加猫咪后再使用'); return; }
+  messages.value.push({ id: `u-report-${Date.now()}`, role: 'user', content: '请生成一份健康报告' });
+  void scrollChatToBottom();
+  try {
+    const result = await sendMessageToAI({ catId, message: buildHealthReportPrompt() });
+    messages.value.push({ id: result.id || `a-report-${Date.now()}`, role: 'assistant', content: result.message });
+    if (typeof result.emotionRecordsCount === 'number') lastEmotionRefCount.value = result.emotionRecordsCount;
+  } catch (err: any) {
+    const msg = String(err?.message || '');
+    const friendly = /key|configured|503|AI assistant/i.test(msg) ? '健康报告服务暂未配置，当前功能待完善。' : '健康报告生成失败，请稍后重试。';
+    messages.value.push({ id: `a-report-fail-${Date.now()}`, role: 'assistant', content: friendly });
+    showToast(friendly);
+  } finally {
+    void scrollChatToBottom();
+  }
 };
 const pushConsultCard = () => {
   messages.value.push({ id: `consult-${Date.now()}`, role: 'assistant', type: 'consult_card', content: '你可以直接输入：例如"2岁猫咪一周喂几次罐头？""最近掉毛多该怎么护理？""主食和零食比例怎么配？"' });
@@ -275,16 +367,28 @@ const handleSend = async () => {
 const handleClearHistory = async () => {
   const catId = selectedCat.value?.id;
   if (!catId) { showToast('暂无可清空的历史'); return; }
-  try { await clearCurrentSession(catId); messages.value = welcomeMessage; showToast('历史已清空'); } catch { showToast('清空失败，请稍后再试'); }
+  try {
+    await clearCurrentSession(catId);
+    inputText.value = '';
+    lastEmotionRefCount.value = 0;
+    messages.value = welcomeMessage.map(item => ({ ...item }));
+    await fetchChatHistory({ catId, page: 1, pageSize: 1 });
+    await nextTick();
+    const el = chatScrollRef.value;
+    if (el) el.scrollTo({ top: 0, behavior: 'auto' });
+    showToast('历史已清空');
+  } catch {
+    showToast('清空失败，请稍后再试');
+  }
 };
 const loadHistory = async () => {
   const catId = selectedCat.value?.id;
-  if (!catId) { messages.value = welcomeMessage; return; }
+  if (!catId) { messages.value = welcomeMessage.map(item => ({ ...item })); return; }
   try {
     await fetchChatHistory({ catId, page: 1, pageSize: 20 });
     const history = [...getCurrentChatHistory.value].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()).map(i => ({ id: i.id, role: i.role, content: i.message }));
-    messages.value = history.length > 0 ? history : welcomeMessage;
-  } catch { messages.value = welcomeMessage; }
+    messages.value = history.length > 0 ? history : welcomeMessage.map(item => ({ ...item }));
+  } catch { messages.value = welcomeMessage.map(item => ({ ...item })); }
   await scrollChatToBottom();
 };
 
@@ -537,6 +641,31 @@ const buildAssistantSections = (content: string) => {
   font-size: 12px;
   font-weight: 1000;
   line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-health-chip > div {
+  min-width: 0;
+}
+.ai-vaccine-list {
+  grid-column: 1 / -1;
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 6px;
+  overflow: hidden;
+}
+.ai-vaccine-list span {
+  max-width: 104px;
+  overflow: hidden;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: rgba(239, 246, 255, 0.9);
+  color: #2563eb;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

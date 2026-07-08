@@ -3,6 +3,7 @@ import json
 import os
 from collections import Counter
 from pathlib import Path
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
@@ -366,15 +367,21 @@ def get_admin_hot_topics(
     counter: Counter[str] = Counter()
     for (content,) in rows:
         counter.update(social_module._extract_topics(content or ""))
-    real_topics = [
-        {"topic": topic, "count": count, "isDefault": False}
-        for topic, count in counter.most_common(limit)
-    ]
-    default_topics = [
-        {"topic": topic, "count": 0, "isDefault": True}
-        for topic in social_module.DEFAULT_HOT_TOPICS
-    ]
-    return envelope({"list": real_topics or default_topics, "defaultTopics": social_module.DEFAULT_HOT_TOPICS})
+    managed = []
+    counter_map = dict(counter)
+    for item in social_module.MANAGED_HOT_TOPICS:
+        topic = social_module._normalize_topic_name(str(item.get("topic") or ""))
+        managed.append({
+            "id": item.get("id"),
+            "topic": topic,
+            "count": counter_map.get(topic, 0),
+            "isDefault": counter_map.get(topic, 0) == 0,
+            "sortOrder": int(item.get("sortOrder") or 0),
+            "isRecommended": bool(item.get("isRecommended", False)),
+            "isVisible": bool(item.get("isVisible", True)),
+        })
+    managed.sort(key=lambda item: (item["sortOrder"], item["topic"]))
+    return envelope({"list": managed[:limit], "defaultTopics": [item["topic"] for item in managed if item.get("isVisible")]})
 
 
 @router.put("/topics/default")
@@ -390,7 +397,90 @@ def update_default_topics(
     if not topics:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Default topics cannot be empty")
     social_module.DEFAULT_HOT_TOPICS[:] = topics[:12]
+    social_module.MANAGED_HOT_TOPICS[:] = [
+        {"id": f"default-{index + 1}", "topic": topic, "sortOrder": index + 1, "isRecommended": True, "isVisible": True}
+        for index, topic in enumerate(social_module.DEFAULT_HOT_TOPICS)
+    ]
     return envelope({"success": True, "defaultTopics": social_module.DEFAULT_HOT_TOPICS})
+
+
+@router.get("/topics")
+def list_admin_topics(
+    _admin: User = Depends(require_admin),
+):
+    items = sorted(social_module.MANAGED_HOT_TOPICS, key=lambda item: (int(item.get("sortOrder") or 0), str(item.get("topic") or "")))
+    return envelope({"list": items, "total": len(items)})
+
+
+@router.post("/topics")
+def create_admin_topic(
+    payload: dict,
+    _admin: User = Depends(require_admin),
+):
+    topic = social_module._normalize_topic_name(str(payload.get("topic") or ""))
+    if not topic:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="话题名不能为空")
+    if any(social_module._normalize_topic_name(str(item.get("topic") or "")) == topic for item in social_module.MANAGED_HOT_TOPICS):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="话题已存在")
+    sort_order = int(payload.get("sortOrder") or (len(social_module.MANAGED_HOT_TOPICS) + 1))
+    item = {
+        "id": uuid4().hex,
+        "topic": topic,
+        "sortOrder": sort_order,
+        "isRecommended": bool(payload.get("isRecommended", True)),
+        "isVisible": bool(payload.get("isVisible", True)),
+    }
+    social_module.MANAGED_HOT_TOPICS.append(item)
+    return envelope(item)
+
+
+@router.put("/topics/sort")
+def sort_admin_topics(
+    payload: dict,
+    _admin: User = Depends(require_admin),
+):
+    orders = payload.get("items") or []
+    order_map = {str(item.get("id")): int(item.get("sortOrder") or index + 1) for index, item in enumerate(orders) if isinstance(item, dict)}
+    for item in social_module.MANAGED_HOT_TOPICS:
+        item_id = str(item.get("id"))
+        if item_id in order_map:
+            item["sortOrder"] = order_map[item_id]
+    return envelope({"success": True, "list": social_module.MANAGED_HOT_TOPICS})
+
+
+@router.put("/topics/{topic_id}")
+def update_admin_topic(
+    topic_id: str,
+    payload: dict,
+    _admin: User = Depends(require_admin),
+):
+    item = next((topic for topic in social_module.MANAGED_HOT_TOPICS if str(topic.get("id")) == topic_id), None)
+    if item is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="话题不存在")
+    if "topic" in payload:
+        topic = social_module._normalize_topic_name(str(payload.get("topic") or ""))
+        if not topic:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="话题名不能为空")
+        item["topic"] = topic
+    if "sortOrder" in payload:
+        item["sortOrder"] = int(payload.get("sortOrder") or 0)
+    if "isRecommended" in payload:
+        item["isRecommended"] = bool(payload.get("isRecommended"))
+    if "isVisible" in payload:
+        item["isVisible"] = bool(payload.get("isVisible"))
+    return envelope(item)
+
+
+@router.delete("/topics/{topic_id}")
+def delete_admin_topic(
+    topic_id: str,
+    _admin: User = Depends(require_admin),
+):
+    before = len(social_module.MANAGED_HOT_TOPICS)
+    social_module.MANAGED_HOT_TOPICS[:] = [item for item in social_module.MANAGED_HOT_TOPICS if str(item.get("id")) != topic_id]
+    if len(social_module.MANAGED_HOT_TOPICS) == before:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="话题不存在")
+    return envelope({"success": True})
 
 
 @router.delete("/dynamics/{dynamic_id}")

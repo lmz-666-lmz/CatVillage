@@ -14,7 +14,7 @@ from app.core.dependencies import get_current_user
 from app.core.security import ACCESS_TOKEN_EXPIRE_DAYS, create_access_token, get_password_hash, verify_password
 from app.database.session import get_db
 from app.models.user import User
-from app.schemas.user import UserCreate, UserProfileUpdate, UserResponse
+from app.schemas.user import PasswordChangeRequest, UserCreate, UserProfileUpdate, UserResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -88,8 +88,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         )
 
     user = db.query(User).filter(User.username == form_data.username).first()
-    if user is None or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户名或密码错误")
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户不存在")
+    if not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="密码错误")
 
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="用户已被禁用")
@@ -147,3 +149,22 @@ def update_profile(
     db.commit()
     db.refresh(current_user)
     return {"code": 200, "msg": "更新成功", "data": _serialize_user(current_user)}
+
+
+@router.put("/password")
+def change_password(
+    payload: PasswordChangeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if not current_user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登录已过期，请重新登录")
+    if not verify_password(payload.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="原密码错误")
+    if payload.old_password == payload.new_password:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="新密码不能和原密码相同")
+
+    current_user.hashed_password = get_password_hash(payload.new_password)
+    db.add(current_user)
+    db.commit()
+    return {"code": 200, "msg": "密码修改成功，请重新登录", "data": {"success": True}}

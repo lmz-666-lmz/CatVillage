@@ -109,19 +109,19 @@
         </div>
 
         <div class="audio-actions">
-          <button type="button" class="audio-action-btn" :disabled="!hasCats || audioBusy || !selectedCatId" @click="toggleRecording">
-            <div class="audio-action-icon" :class="{ recording: isRecording }">
-              <van-icon :name="isRecording ? 'pause-circle-o' : 'volume-o'" size="22" />
-            </div>
-            <span class="audio-action-label">{{ isRecording ? '停止录音' : '现场录音' }}</span>
-            <span class="audio-action-hint">{{ isRecording ? '点击停止' : '录制猫叫声' }}</span>
-          </button>
           <button type="button" class="audio-action-btn" :disabled="!hasCats || audioBusy || !selectedCatId" @click="openAudioPicker">
             <div class="audio-action-icon">
-              <van-icon name="replay" size="22" />
+              <van-icon name="music-o" size="22" />
+            </div>
+            <span class="audio-action-label">上传录音</span>
+            <span class="audio-action-hint">选择猫叫音频</span>
+          </button>
+          <button type="button" class="audio-action-btn" :disabled="!hasCats || audioBusy || !selectedCatId" @click="openEmotionHistory">
+            <div class="audio-action-icon">
+              <van-icon name="clock-o" size="22" />
             </div>
             <span class="audio-action-label">历史导入</span>
-            <span class="audio-action-hint">选择音频文件</span>
+            <span class="audio-action-hint">选择情绪记录</span>
           </button>
         </div>
 
@@ -148,6 +148,28 @@
 
         <div class="audio-footer-hint">系统会整理情绪结果与热词推荐，帮你找到合适话题。</div>
       </section>
+
+      <van-action-sheet v-model:show="showEmotionHistory" title="选择历史情绪">
+        <div class="history-sheet">
+          <div v-if="historyLoading" class="history-empty">正在加载历史记录...</div>
+          <div v-else-if="emotionHistory.length === 0" class="history-empty">暂无历史情绪记录</div>
+          <template v-else>
+            <button
+              v-for="item in emotionHistory"
+              :key="item.id"
+              type="button"
+              class="history-item"
+              @click="importEmotionRecord(item)"
+            >
+              <div>
+                <strong>{{ item.emotionTag || '未知情绪' }}</strong>
+                <span>{{ item.emotionDescription || '本喵今天也有话想说' }}</span>
+              </div>
+              <small>{{ Math.round((item.confidence || 0) * 100) }}%</small>
+            </button>
+          </template>
+        </div>
+      </van-action-sheet>
     </div>
   </div>
 </template>
@@ -156,14 +178,15 @@
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { closeToast, showToast } from 'vant';
-import type { RecognizeEmotionResponse } from '@/types/emotion';
+import type { EmotionRecordResponse, RecognizeEmotionResponse } from '@/types/emotion';
 import { useSocialFeatures } from '@/composables/useSocialFeatures';
 import { useEmotionAnalysis } from '@/composables/useEmotionAnalysis';
 import { useCatsStore, useCurrentCatStore } from '@/stores';
+import { validateAudioFile } from '@/utils/audio';
 
 const router = useRouter();
 const { publishNewDynamic } = useSocialFeatures();
-const { analyzeEmotion } = useEmotionAnalysis();
+const { analyzeEmotion, fetchEmotionRecords } = useEmotionAnalysis();
 const catsStore = useCatsStore();
 const currentCatStore = useCurrentCatStore();
 
@@ -177,12 +200,11 @@ const imageAssets = ref<Array<{ id: string; file: File; previewUrl: string }>>([
 const MAX_IMAGES = 9;
 
 const audioBusy = ref(false);
-const isRecording = ref(false);
 const recordStatusText = ref('');
 const lastAudioResult = ref<RecognizeEmotionResponse | null>(null);
-const recorder = ref<MediaRecorder | null>(null);
-const recordingChunks = ref<Blob[]>([]);
-const recordingStream = ref<MediaStream | null>(null);
+const showEmotionHistory = ref(false);
+const historyLoading = ref(false);
+const emotionHistory = ref<EmotionRecordResponse[]>([]);
 
 const selectedCatId = computed(() => currentCatStore.getCurrentCatId || catsStore.getAllCats[0]?.id || '');
 const hasCats = computed(() => catsStore.getAllCats.length > 0);
@@ -215,6 +237,19 @@ const reload = () => initData();
 
 const openImagePicker = () => imageInputRef.value?.click();
 const openAudioPicker = () => audioInputRef.value?.click();
+const openEmotionHistory = async () => {
+  if (!selectedCatId.value) return;
+  showEmotionHistory.value = true;
+  historyLoading.value = true;
+  try {
+    const data = await fetchEmotionRecords({ page: 1, pageSize: 8, catId: selectedCatId.value });
+    emotionHistory.value = data.list || [];
+  } catch {
+    showToast({ type: 'fail', message: '历史情绪加载失败' });
+  } finally {
+    historyLoading.value = false;
+  }
+};
 
 const revokePreview = (url: string) => {
   if (url.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -242,15 +277,13 @@ const removeImage = (id: string) => {
   imageAssets.value = imageAssets.value.filter((entry) => entry.id !== id);
 };
 
-const cleanupRecorder = () => {
-  recorder.value?.stream.getTracks().forEach((track) => track.stop());
-  recorder.value = null;
-  recordingStream.value = null;
-  recordingChunks.value = [];
-  isRecording.value = false;
+const makeEmotionMarker = (id: string, tag: string, audio: string) => `[CV_EMOTION id="${id}" tag="${tag || ''}" audio="${audio || ''}"]`;
+const buildEmotionText = (tag: string, desc: string, marker: string) => {
+  const label = tag || '未知';
+  return `本喵今天${label}中～\n猫叫分析结果：${label}\nAI 建议：${desc || '继续观察猫咪的食欲、精神和互动状态。'}\n${marker}`;
 };
 
-const analyzeAudioBlob = async (blob: Blob, fileName: string) => {
+const analyzeAudioFile = async (file: File) => {
   const catId = selectedCatId.value;
   if (!catId) {
     showToast({ type: 'fail', message: '请先选择猫咪档案' });
@@ -262,9 +295,9 @@ const analyzeAudioBlob = async (blob: Blob, fileName: string) => {
   showToast({ type: 'loading', message: '正在识别...', duration: 0, forbidClick: true });
 
   try {
-    const file = new File([blob], fileName, { type: blob.type || 'audio/webm' });
     lastAudioResult.value = await analyzeEmotion({ catId, audioFile: file });
     recordStatusText.value = `已识别：${lastAudioResult.value.emotionTag}`;
+    appendEmotionToContent();
     closeToast();
     showToast({ type: 'success', message: '识别完成' });
   } catch {
@@ -276,67 +309,35 @@ const analyzeAudioBlob = async (blob: Blob, fileName: string) => {
   }
 };
 
-const toggleRecording = async () => {
-  if (audioBusy.value || !selectedCatId.value) return;
-
-  if (isRecording.value && recorder.value) {
-    recorder.value.stop();
-    isRecording.value = false;
-    recordStatusText.value = '正在处理录音...';
-    return;
-  }
-
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
-    showToast({ type: 'fail', message: '当前浏览器不支持录音' });
-    return;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    recordingStream.value = stream;
-    recordingChunks.value = [];
-    const mediaRecorder = new MediaRecorder(stream);
-    recorder.value = mediaRecorder;
-
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) recordingChunks.value.push(event.data);
-    };
-
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(recordingChunks.value, { type: mediaRecorder.mimeType || 'audio/webm' });
-      cleanupRecorder();
-      if (blob.size > 0) {
-        await analyzeAudioBlob(blob, `meow-record-${Date.now()}.webm`);
-      } else {
-        recordStatusText.value = '未录到有效音频';
-      }
-    };
-
-    mediaRecorder.start();
-    isRecording.value = true;
-    recordStatusText.value = '正在录音，点击可停止';
-  } catch {
-    showToast({ type: 'fail', message: '无法开启录音权限' });
-    cleanupRecorder();
-  }
-};
-
 const onPickAudioFile = async (event: Event) => {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
   target.value = '';
   if (!file) return;
-  if (!file.type.startsWith('audio/')) {
-    showToast({ type: 'fail', message: '请选择音频文件' });
+  const validation = await validateAudioFile(file);
+  if (!validation.ok) {
+    showToast({ type: 'fail', message: validation.message || '音频无法上传' });
     return;
   }
-  await analyzeAudioBlob(file, file.name || `meow-import-${Date.now()}.webm`);
+  if (validation.warning) showToast({ type: 'success', message: validation.warning });
+  await analyzeAudioFile(file);
 };
 
 const appendEmotionToContent = () => {
   if (!lastAudioResult.value) return;
-  const text = `【${lastAudioResult.value.emotionTag}】${lastAudioResult.value.emotionDescription}`;
+  const result = lastAudioResult.value;
+  const audio = result.recordId ? `/api/v1/emotions/records/${result.recordId}/audio` : '';
+  const text = buildEmotionText(result.emotionTag, result.emotionDescription, makeEmotionMarker(result.recordId, result.emotionTag, audio));
   content.value = content.value ? `${content.value}\n${text}` : text;
+};
+
+const importEmotionRecord = (item: EmotionRecordResponse) => {
+  const cute = `本喵今天${item.emotionTag || '有点特别'}中～`;
+  const desc = item.emotionDescription ? `AI 建议：${item.emotionDescription}` : 'AI 建议：继续观察猫咪的食欲、精神和互动状态。';
+  const text = `${cute}\n猫叫分析结果：${item.emotionTag || '未知'}\n${desc}\n${makeEmotionMarker(item.id, item.emotionTag, item.audioUrl)}`;
+  content.value = content.value ? `${content.value}\n\n${text}` : text;
+  showEmotionHistory.value = false;
+  showToast({ type: 'success', message: '已导入历史情绪' });
 };
 
 const publish = async () => {
@@ -376,7 +377,6 @@ const publish = async () => {
 
 onBeforeUnmount(() => {
   imageAssets.value.forEach((item) => revokePreview(item.previewUrl));
-  cleanupRecorder();
 });
 
 void initData();
@@ -901,4 +901,12 @@ void initData();
   color: #b0b8c4;
   text-align: center;
 }
+
+.history-sheet { display: grid; gap: 10px; padding: 10px 16px 22px; }
+.history-empty { padding: 22px 12px; color: #748094; text-align: center; font-size: 14px; font-weight: 700; }
+.history-item { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid rgba(226,232,240,.92); border-radius: 16px; background: #fff; padding: 12px; text-align: left; }
+.history-item div { display: grid; min-width: 0; gap: 4px; }
+.history-item strong { color: #172033; font-size: 15px; font-weight: 900; }
+.history-item span { overflow: hidden; color: #748094; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.history-item small { flex-shrink: 0; border-radius: 999px; background: #fff7ed; color: #ea580c; padding: 5px 8px; font-weight: 900; }
 </style>

@@ -38,70 +38,36 @@
         <input ref="audioInputRef" type="file" accept="audio/*" class="hidden" @change="onAudioSelected" />
         <div class="listen-header">
           <span class="listen-badge">喵语识别</span>
-          <strong>录音与上传双通道识别</strong>
-          <p>{{ recordingHint }}</p>
+          <strong>点击圆盘上传猫叫录音</strong>
+          <p>{{ uploadHint }}</p>
         </div>
 
-        <div class="recognition-grid">
-          <div class="recognition-card record-card" :class="{ unavailable: !recordingSupport.canRecord }">
-            <div class="recognition-card-head">
-              <div>
-                <span>录音识别</span>
-                <strong>{{ recordingStatus }}</strong>
-              </div>
-              <van-icon name="volume-o" size="22" />
+        <div class="upload-disc-card">
+          <div class="record-disc-wrap">
+            <div class="record-disc-stage upload-mode" :class="{ analyzing: analyzing, done: latestRecord }">
+              <div class="disc-aura aura-1" />
+              <div class="disc-aura aura-2" />
+              <div class="disc-aura aura-3" />
+              <div class="disc-glow" />
+              <button
+                class="record-disc-btn"
+                :class="{ analyzing, disabled: !hasCats || analyzing }"
+                :disabled="!hasCats || analyzing"
+                type="button"
+                @click="openAudioPicker"
+              >
+                <div class="disc-inner-face">
+                  <span class="disc-emoji">{{ analyzing ? '🤔' : '🐾' }}</span>
+                  <van-icon :name="analyzing ? 'clock-o' : 'music-o'" size="28" class="disc-icon" :class="{ spinning: analyzing }" />
+                  <span class="disc-label">{{ analyzing ? '分析中' : '上传录音' }}</span>
+                </div>
+              </button>
             </div>
-            <div v-if="!recordingSupport.canRecord" class="capability-warning">{{ recordingSupport.message }}</div>
-            <div class="record-disc-wrap">
-              <div class="record-disc-stage" :class="{ recording: isRecording, analyzing: analyzing }">
-                <div class="disc-aura aura-1" />
-                <div class="disc-aura aura-2" />
-                <div class="disc-aura aura-3" />
-                <div class="disc-glow" />
-                <button
-                  v-if="recordingSupport.canRecord"
-                  class="record-disc-btn"
-                  :class="{ recording: isRecording, analyzing, disabled: !hasCats || analyzing }"
-                  :disabled="!hasCats || analyzing"
-                  @pointerdown.prevent="startRecording"
-                  @pointerup.prevent="stopRecording"
-                  @pointercancel.prevent="stopRecording"
-                  @pointerleave.prevent="stopRecording"
-                >
-                  <div class="disc-inner-face">
-                    <span class="disc-emoji">{{ discEmoji }}</span>
-                    <van-icon v-if="!isRecording && !analyzing" name="volume-o" size="28" class="disc-icon" />
-                    <van-icon v-else-if="analyzing" name="clock-o" size="28" class="disc-icon spinning" />
-                    <span class="disc-label">{{ discLabel }}</span>
-                  </div>
-                </button>
-                <button v-else class="record-disc-btn disabled" type="button" @click="showRecordingUnavailable">
-                  <div class="disc-inner-face">
-                    <span class="disc-emoji">!</span>
-                    <van-icon name="warning-o" size="28" class="disc-icon" />
-                    <span class="disc-label">录音不可用</span>
-                  </div>
-                </button>
-              </div>
-              <div class="disc-footer-hint">
-                {{ recordingSupport.canRecord ? '按住录音 · 松手识别' : '当前环境请使用上传识别' }}
-              </div>
-            </div>
+            <div class="disc-footer-hint">支持常见音频格式 · 建议上传 5-20 秒清晰猫叫</div>
           </div>
-
-          <div class="recognition-card upload-card">
-            <div class="recognition-card-head">
-              <div>
-                <span>上传音频识别</span>
-                <strong>{{ uploadStatus }}</strong>
-              </div>
-              <van-icon name="upgrade" size="22" />
-            </div>
-            <p>支持手机录音文件、聊天里的猫叫音频或本地音频文件。</p>
-            <button type="button" class="upload-audio-btn" :disabled="analyzing" @click="openAudioPicker">
-              <van-icon name="music-o" size="18" />
-              {{ analyzing ? '上传识别中...' : '上传猫叫音频' }}
-            </button>
+          <div class="upload-disc-copy">
+            <strong>{{ uploadStatus }}</strong>
+            <span>从手机录音、聊天音频或本地文件中选择猫叫片段，上传后会自动调用原有分析接口。</span>
           </div>
         </div>
       </section>
@@ -235,9 +201,10 @@ import { useEmotionAnalysis } from '@/composables/useEmotionAnalysis';
 import { useCatsStore, useCurrentCatStore } from '@/stores';
 import { createAuthorizedAudioObjectUrl } from '@/api/emotion';
 import type { CatProfile } from '@/types';
+import type { EmotionRecordResponse } from '@/types/emotion';
 import { DEFAULT_CAT_AVATAR, getSafeImageUrl, handleImageError as replaceBrokenImage } from '@/utils/image';
-import { detectAudioRecordingSupport, type AudioRecordingSupport } from '@/utils/media';
 import { formatCatAge } from '@/utils/age';
+import { validateAudioFile } from '@/utils/audio';
 
 const router = useRouter();
 const catsStore = useCatsStore();
@@ -247,42 +214,21 @@ const { analyzeEmotion, fetchEmotionRecords, getCurrentRecords, removeEmotionRec
 const showCatSheet = ref(false);
 const audioInputRef = ref<HTMLInputElement | null>(null);
 const analyzing = ref(false);
-const isRecording = ref(false);
-const recordDuration = ref(0);
-let recordTimer: ReturnType<typeof setInterval> | null = null;
-const recorder = ref<MediaRecorder | null>(null);
-const recordingChunks = ref<Blob[]>([]);
-const recordingStream = ref<MediaStream | null>(null);
+const analysisStage = ref('');
+const optimisticRecord = ref<EmotionRecordResponse | null>(null);
+let refreshToken = 0;
 const defaultAvatar = DEFAULT_CAT_AVATAR;
-const recordingSupport = ref<AudioRecordingSupport>(detectAudioRecordingSupport());
 const cats = computed(() => catsStore.getAllCats);
 const hasCats = computed(() => cats.value.length > 0);
-const recordingStatus = computed(() => {
-  if (analyzing.value) return '正在解读喵星语...';
-  if (isRecording.value) return `小耳朵竖起中 ${recordDuration.value}s`;
-  return '准备好听猫咪说说话';
-});
-const recordingHint = computed(() => {
+const uploadHint = computed(() => {
   if (!hasCats.value) return '先添加一只小猫咪，才能开始倾听喔 🐱';
-  if (analyzing.value) return 'AI 正在努力理解主子的心思，请稍等一下～';
-  if (isRecording.value) return '主子的每一声喵都在被认真记录中...';
-  if (!recordingSupport.value.canRecord) return recordingSupport.value.message;
-  return '把猫咪的叫声录下来，我来帮你翻译它在说什么 ✨';
+  if (analyzing.value) return analysisStage.value || 'AI 正在努力理解主子的心思，请稍等一下～';
+  return '点击圆盘上传猫叫录音，支持常见音频格式';
 });
 const uploadStatus = computed(() => {
   if (!hasCats.value) return '请先添加猫咪';
   if (analyzing.value) return '正在识别';
   return '随时可用';
-});
-const discEmoji = computed(() => {
-  if (analyzing.value) return '🤔';
-  if (isRecording.value) return '🎤';
-  return '🐱';
-});
-const discLabel = computed(() => {
-  if (analyzing.value) return '破译中';
-  if (isRecording.value) return '松手听听';
-  return '按住喵一声';
 });
 
 const selectedCatId = computed(() => currentCatStore.getCurrentCatId || catsStore.getAllCats[0]?.id || '');
@@ -294,7 +240,7 @@ const selectedCatAge = computed(() => formatCatAge(selectedCat.value?.age));
 const catAgeText = (cat: CatProfile) => formatCatAge(cat.age);
 
 const records = computed(() => getCurrentRecords.value);
-const latestRecord = computed(() => records.value[0] || null);
+const latestRecord = computed(() => optimisticRecord.value || records.value[0] || null);
 const historyItems = computed(() => records.value.slice(0, 4));
 
 const playingId = ref('');
@@ -312,9 +258,18 @@ const toggleAudio = async (id: string) => {
 };
 const onAudioEnded = (id: string) => { if (playingId.value === id) playingId.value = ''; };
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 const refresh = async () => {
   if (!selectedCatId.value) return;
-  try { await fetchEmotionRecords({ page: 1, pageSize: 10, catId: selectedCatId.value }); }
+  const token = ++refreshToken;
+  const catId = selectedCatId.value;
+  try {
+    await fetchEmotionRecords({ page: 1, pageSize: 10, catId });
+    if (token === refreshToken && optimisticRecord.value && records.value.some(item => item.id === optimisticRecord.value?.id)) {
+      optimisticRecord.value = null;
+    }
+  }
   catch (e: unknown) { if ((e as any)?.status !== 404) showToast({ type: 'fail', message: '数据加载失败，请稍后重试' }); }
 };
 const switchCat = async (id: string) => { currentCatStore.setCurrentCat(id); showCatSheet.value = false; await refresh(); };
@@ -334,90 +289,20 @@ const deleteRecord = async (recordId: string) => {
   }
 };
 
-const cleanupRecorder = () => {
-  if (recordTimer) { clearInterval(recordTimer); recordTimer = null; }
-  recorder.value?.stream.getTracks().forEach((t) => t.stop());
-  recordingStream.value?.getTracks().forEach((t) => t.stop());
-  recorder.value = null;
-  recordingStream.value = null;
-  recordingChunks.value = [];
-  isRecording.value = false;
-  recordDuration.value = 0;
-};
-
-const analyzeAudioBlob = async (blob: Blob, fileName: string) => {
-  const catId = selectedCatId.value;
-  if (!hasCats.value || !catId) { showToast({ type: 'fail', message: '请先添加猫咪' }); return; }
-  analyzing.value = true;
-  showToast({ type: 'loading', message: '正在识别猫语...', duration: 0, forbidClick: true });
-  try {
-    const file = new File([blob], fileName, { type: blob.type || 'audio/webm' });
-    await analyzeEmotion({ catId, audioFile: file });
-    closeToast();
-    showToast({ type: 'success', message: '识别完成' });
-    await refresh();
-  } catch {
-    closeToast();
-    showToast({ type: 'fail', message: '识别失败，请稍后重试' });
-  } finally { analyzing.value = false; }
-};
-
-const startRecording = async () => {
-  if (isRecording.value || analyzing.value) return;
-  if (!hasCats.value || !selectedCatId.value) { showToast({ type: 'fail', message: '请先添加猫咪' }); return; }
-  recordingSupport.value = detectAudioRecordingSupport();
-  if (!recordingSupport.value.canRecord) {
-    showToast({ type: 'fail', message: recordingSupport.value.message });
-    return;
-  }
-
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    recordingStream.value = stream;
-    recordingChunks.value = [];
-    const options = recordingSupport.value.supportedMimeType ? { mimeType: recordingSupport.value.supportedMimeType } : undefined;
-    const mediaRecorder = new MediaRecorder(stream, options);
-    recorder.value = mediaRecorder;
-
-    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordingChunks.value.push(e.data); };
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(recordingChunks.value, { type: mediaRecorder.mimeType || 'audio/webm' });
-      cleanupRecorder();
-      if (blob.size > 0) {
-        await analyzeAudioBlob(blob, `meow-${Date.now()}.webm`);
-      }
-    };
-
-    mediaRecorder.start();
-    isRecording.value = true;
-    recordDuration.value = 0;
-    recordTimer = setInterval(() => { recordDuration.value += 1; }, 1000);
-  } catch (error: unknown) {
-    const name = (error as DOMException)?.name || '';
-    showToast({
-      type: 'fail',
-      message: /NotAllowedError|PermissionDeniedError/i.test(name)
-        ? '请在浏览器设置中允许麦克风权限，或上传音频文件。'
-        : '当前浏览器不支持直接录音，可上传音频文件识别。'
-    });
-    cleanupRecorder();
-  }
-};
-
-const stopRecording = async () => {
-  if (isRecording.value && recorder.value) {
-    recorder.value.stop();
-  }
-};
-
-const showRecordingUnavailable = () => {
-  showToast({ type: 'fail', message: recordingSupport.value.message || '当前浏览器不支持直接录音，可上传音频文件识别。' });
-};
-
 const openAudioPicker = () => {
   if (!hasCats.value || !selectedCatId.value) { showToast({ type: 'fail', message: '请先添加猫咪' }); return; }
   if (analyzing.value) return;
   audioInputRef.value?.click();
+};
+
+const friendlyAudioError = (error: unknown) => {
+  const status = (error as any)?.status || (error as any)?.response?.status;
+  const message = String((error as any)?.message || '').toLowerCase();
+  if (/时间较长|timeout|aborted|超时/.test(message)) return '分析时间较长，请稍后查看历史记录';
+  if (status === 413 || /large|too large|文件过大/.test(message)) return '文件过大，请上传 10MB 以内的音频';
+  if (status === 415 || /format|类型|格式|unsupported/.test(message)) return '格式不支持，请上传常见音频格式';
+  if (/network|网络/.test(message)) return '网络异常，请检查后重试';
+  return 'AI 分析失败，请稍后重试';
 };
 
 const onAudioSelected = async (event: Event) => {
@@ -429,17 +314,52 @@ const onAudioSelected = async (event: Event) => {
     showToast({ type: 'fail', message: '请先添加猫咪' });
     return;
   }
+  const validation = await validateAudioFile(file);
+  if (!validation.ok) {
+    input.value = '';
+    showToast({ type: 'fail', message: validation.message || '音频无法上传' });
+    return;
+  }
+  if (validation.warning) showToast({ type: 'success', message: validation.warning });
   analyzing.value = true;
-  showToast({ type: 'loading', message: '正在识别猫语...', duration: 0, forbidClick: true });
+  analysisStage.value = '正在上传录音';
+  showToast({ type: 'loading', message: analysisStage.value, duration: 0, forbidClick: true });
   try {
-    await analyzeEmotion({ catId: selectedCatId.value, audioFile: file });
+    await sleep(250);
+    analysisStage.value = '正在分析猫叫';
+    showToast({ type: 'loading', message: analysisStage.value, duration: 0, forbidClick: true });
+    const result = await analyzeEmotion({ catId: selectedCatId.value, audioFile: file });
+    optimisticRecord.value = {
+      id: result.recordId || `local-${Date.now()}`,
+      catId: selectedCatId.value,
+      userId: '',
+      audioUrl: result.recordId ? `/api/v1/emotions/records/${result.recordId}/audio` : '',
+      emotionTag: result.emotionTag,
+      confidence: result.confidence,
+      emotionDescription: result.emotionDescription,
+      createdAt: new Date().toISOString()
+    };
+    analysisStage.value = '分析完成，正在刷新历史';
+    showToast({ type: 'loading', message: analysisStage.value, duration: 0, forbidClick: true });
+    await refresh();
+    for (const delay of [800, 1500, 3000]) {
+      await sleep(delay);
+      await refresh();
+      if (!optimisticRecord.value) break;
+    }
     closeToast();
     showToast({ type: 'success', message: '识别完成' });
-    await refresh();
-  } catch {
+  } catch (error: unknown) {
     closeToast();
-    showToast({ type: 'fail', message: '识别失败，请稍后重试' });
-  } finally { analyzing.value = false; input.value = ''; }
+    const msg = friendlyAudioError(error);
+    showToast({ type: msg.includes('较长') ? 'success' : 'fail', message: msg });
+    if (msg.includes('较长')) {
+      for (const delay of [800, 1500, 3000]) {
+        await sleep(delay);
+        await refresh();
+      }
+    }
+  } finally { analyzing.value = false; analysisStage.value = ''; input.value = ''; }
 };
 
 const formatClock = (v: string) => { const d = new Date(v); if (isNaN(d.getTime())) return ''; const h = d.getHours(), m = String(d.getMinutes()).padStart(2, '0'); return `${String(h % 12 || 12).padStart(2, '0')}:${m} ${h >= 12 ? 'PM' : 'AM'}`; };
@@ -450,7 +370,6 @@ const handleImageError = (event: Event) => replaceBrokenImage(event, defaultAvat
 
 onMounted(async () => {
   window.scrollTo(0, 0);
-  recordingSupport.value = detectAudioRecordingSupport();
   currentCatStore.loadCurrentCat();
   await catsStore.fetchAllCats(true);
   const currentId = currentCatStore.getCurrentCatId;
@@ -458,7 +377,10 @@ onMounted(async () => {
   if (!hasCurrent) { currentCatStore.clearCurrentCat(); if (catsStore.getAllCats[0]?.id) currentCatStore.setCurrentCat(catsStore.getAllCats[0].id); }
   await refresh();
 });
-onUnmounted(() => cleanupRecorder());
+onUnmounted(() => {
+  audioObjectUrls.value.forEach((url) => URL.revokeObjectURL(url));
+  audioObjectUrls.value.clear();
+});
 watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refresh(); });
 </script>
 
@@ -1008,6 +930,33 @@ watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refre
   opacity: .55;
 }
 
+.upload-disc-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  border: 1px solid rgba(255, 228, 212, 0.92);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 247, 237, 0.78));
+  padding: 18px 14px 16px;
+  box-shadow: 0 18px 42px rgba(249, 115, 22, 0.12);
+  text-align: center;
+}
+
+.upload-disc-copy {
+  display: grid;
+  gap: 5px;
+  color: #748094;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.upload-disc-copy strong {
+  color: var(--cv-ink);
+  font-size: 15px;
+  font-weight: 1000;
+}
+
 /* ===== RECORDING DISC ===== */
 .record-disc-wrap {
   display: flex;
@@ -1023,6 +972,14 @@ watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refre
   height: 210px;
   display: grid;
   place-items: center;
+}
+
+.record-disc-stage.upload-mode:not(.analyzing) {
+  animation: disc-breathe 2.8s ease-in-out infinite;
+}
+
+.record-disc-stage.upload-mode.done:not(.analyzing) .disc-glow {
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.18) 0%, transparent 70%);
 }
 
 /* Aura rings */
@@ -1094,6 +1051,7 @@ watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refre
 .record-disc-stage.analyzing .aura-3 { border-color: rgba(16, 32, 51, 0.06); }
 .record-disc-stage.analyzing .disc-glow {
   background: radial-gradient(circle, rgba(16,32,51,0.12) 0%, transparent 70%);
+  animation: icon-spin 1.4s linear infinite;
 }
 
 /* Main disc button */
@@ -1210,6 +1168,20 @@ watch(() => selectedCatId.value, async (n, o) => { if (n && n !== o) await refre
 @keyframes icon-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
+}
+
+@keyframes disc-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.025); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .record-disc-stage.upload-mode:not(.analyzing),
+  .record-disc-stage.analyzing .disc-glow,
+  .disc-icon.spinning,
+  .hint-paw {
+    animation: none !important;
+  }
 }
 
 .disc-label {
